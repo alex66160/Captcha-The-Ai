@@ -1,6 +1,8 @@
-package com.captchatheai.backend.entity;
+package com.captchatheai.backend.player;
 
 import java.time.LocalDateTime;
+
+import com.captchatheai.backend.lobby.Lobby;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

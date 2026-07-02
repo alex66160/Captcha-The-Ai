@@ -1,4 +1,6 @@
-package com.captchatheai.backend.entity;
+package com.captchatheai.backend.player;
+
+import com.captchatheai.backend.lobby.Lobby;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,6 +11,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * The PlayerQuestion entity class, keeps track of the questions asked in a lobby.
@@ -17,6 +23,10 @@ import jakarta.persistence.Table;
  */
 @Entity
 @Table(name = "player_questions")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class PlayerQuestion {
 	
 	/** Id for the playerQuestion */
@@ -43,84 +53,7 @@ public class PlayerQuestion {
 	@Column (name = "is_ai_generated", nullable = false)
 	private boolean isAiGenerated;
 
-	/**
-	 * @return the playerQuestionId
-	 */
-	public long getPlayerQuestionId() {
-		return playerQuestionId;
-	}
 
-	/**
-	 * @param playerQuestionId the playerQuestionId to set
-	 */
-	public void setPlayerQuestionId(long playerQuestionId) {
-		this.playerQuestionId = playerQuestionId;
-	}
-
-	/**
-	 * @return the question
-	 */
-	public String getQuestion() {
-		return question;
-	}
-
-	/**
-	 * @param question the question to set
-	 */
-	public void setQuestion(String question) {
-		this.question = question;
-	}
-
-	/**
-	 * @return the player
-	 */
-	public Player getPlayer() {
-		return player;
-	}
-
-	/**
-	 * @param player the player to set
-	 */
-	public void setPlayer(Player player) {
-		this.player = player;
-	}
-
-	/**
-	 * @return the lobby
-	 */
-	public Lobby getLobby() {
-		return lobby;
-	}
-
-	/**
-	 * @param lobby the lobby to set
-	 */
-	public void setLobby(Lobby lobby) {
-		this.lobby = lobby;
-	}
-
-	
-
-	/**
-	 * @return the isAiGenerated
-	 */
-	public boolean isAiGenerated() {
-		return isAiGenerated;
-	}
-
-	/**
-	 * @param isAiGenerated the isAiGenerated to set
-	 */
-	public void setAiGenerated(boolean isAiGenerated) {
-		this.isAiGenerated = isAiGenerated;
-	}
-
-	/**
-	 * No args constructor for player question
-	 */
-	public PlayerQuestion() {
-		super();
-	}
 	
 	
 }
