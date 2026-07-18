@@ -1,6 +1,10 @@
 package com.captchatheai.backend.question;
 
-import com.captchatheai.backend.player.PlayerAvatar;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+
 
 /**
  * The Question class represents a player's written question
@@ -8,6 +12,11 @@ import com.captchatheai.backend.player.PlayerAvatar;
  * 
  * @author Alex Liu
  */
+
+
+@Getter
+@Setter
+@AllArgsConstructor
 public class Question {
 	
 	private String question;
