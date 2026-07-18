@@ -1,5 +1,5 @@
 package com.captchatheai.backend.lobby;
 
-public class ChatMessage {
+public enum LobbyPhase {
 
 }

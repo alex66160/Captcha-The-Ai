@@ -1,5 +1,9 @@
 package com.captchatheai.backend.lobby;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Repository;
@@ -13,8 +17,26 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class LobbyRepository {
 
-	ConcurrentHashMap<String, Lobby> lobbies = new ConcurrentHashMap<String, Lobby>();
+	private final Map<String, Lobby> lobbies = new ConcurrentHashMap<>();
+	
+	public Optional<Lobby> findById(String id) {
+		return Optional.ofNullable(lobbies.get(id));
+	}
+	
+	public Collection<Lobby> findAll() {
+		return lobbies.values();
+	}
+	
+	public void save(Lobby lobby) {
+		lobbies.put(lobby.getId(), lobby);
+	}
+	
+	public void deleteById(String id) {
+		lobbies.remove(id);
+	}
 	
 	
-	
+	public long count() {
+		return lobbies.size();
+	}
 }
