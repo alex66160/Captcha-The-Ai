@@ -10,8 +10,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
-
+import com.captchatheai.backend.lobby.Lobby;
 import com.captchatheai.backend.lobby.LobbyService;
+import com.captchatheai.backend.player.PlayerDisconnectedException;
+import com.captchatheai.backend.player.PlayerState;
 
 import lombok.RequiredArgsConstructor;
 
@@ -50,15 +52,20 @@ public class ChatService {
 	 * @param message the chat message that was sent
 	 */
 	public void sendChatMessage(String lobbyId, UUID playerId, String message) {
-		
-		// Make sure that the player's chat cooldown has finished
-		
-		if (lastSentMessage.get(playerId) != null && 
-				Instant.now().isBefore(lastSentMessage.get(playerId).plusSeconds(CHAT_COOLDOWN_DURATION) )) {
-			
-			throw new ChatCooldownException();
+		PlayerState playerState = lobbyService.getPlayerById(lobbyId, playerId).getState();
+		if (playerState == PlayerState.DISCONNECTED) {
+			throw new PlayerDisconnectedException();
 		}
 		
+		// Make sure that the player's chat cooldown has finished
+		synchronized (lastSentMessage) {
+			if (lastSentMessage.get(playerId) != null && 
+					Instant.now().isBefore(lastSentMessage.get(playerId).plusSeconds(CHAT_COOLDOWN_DURATION) )) {
+				
+				throw new ChatCooldownException();
+			}
+			lastSentMessage.put(playerId, Instant.now());
+		}
 		
 		
 		
@@ -67,19 +74,25 @@ public class ChatService {
 		
 		ChatMessage chatMessage = new ChatMessage(playerId, message);
 		
-		// Synchronize chatHistory to make sure that the max chat message limit
-		// is never exceeded
-		synchronized (chatHistory) {
+		if (playerState == PlayerState.ALIVE) {
+			// Synchronize chatHistory to make sure that the max chat message limit
+			// is never exceeded
+			synchronized (chatHistory) {
+				
+				if (chatHistory.size() >= MAX_CHAT_MESSAGES) {
+					chatHistory.removeFirst();
+				} 
+				chatHistory.addLast(chatMessage);
+			}
 			
-			if (chatHistory.size() >= MAX_CHAT_MESSAGES) {
-				chatHistory.removeFirst();
-			} 
-			chatHistory.addLast(chatMessage);
+			
 		}
 		
-		lastSentMessage.put(playerId, Instant.now());
 		messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/chat", chatMessage);
 		
+		if (playerState == PlayerState.SPECTATOR) {
+			messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/chat/spectator", chatMessage);
+		}
 	}
 	
 	/** 
@@ -92,6 +105,6 @@ public class ChatService {
 		lastSentMessage.remove(playerId);
 	}
 	
-	
+
 	
 }

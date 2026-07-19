@@ -39,8 +39,8 @@ public class Lobby {
 	private UUID questionWriterId;
 	private UUID adminId;
 	private List<Player> players = new CopyOnWriteArrayList<>();
-	private Map<String, Player> sessionIdToPlayer = new ConcurrentHashMap<>();
-	private Map<UUID, Player> idToPlayer = new ConcurrentHashMap<>();
+	private Map<String, Player> playersBySessionId = new ConcurrentHashMap<>();
+	private Map<UUID, Player> playersById = new ConcurrentHashMap<>();
 	private UUID eliminatedPlayerId;
 	
 	private List<UUID> tiedPlayerId = new CopyOnWriteArrayList<>();
@@ -49,7 +49,7 @@ public class Lobby {
 	private List<Answer> answers = new CopyOnWriteArrayList<>();
 	private Question question;
 	
-	private Map<UUID, UUID> voterToVoteTarget;
+	private Map<UUID, UUID> voteTargetByVoter;
 	
 	private LobbyPhase lobbyPhase;
 	private Instant phaseEndTime;
