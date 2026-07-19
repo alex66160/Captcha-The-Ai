@@ -1,4 +1,8 @@
 package com.captchatheai.backend.player;
+
+
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,11 +12,12 @@ import lombok.Setter;
 @AllArgsConstructor
 public class Player {
 
+	private UUID id;
 	private String name;
 	private PlayerAvatar avatar;
 	private PlayerState state;
 
-	private boolean isAi;
+
 	private String sessionId;
 	private boolean toBeKicked;
 }
