@@ -1,6 +1,8 @@
 package com.captchatheai.backend.question;
 
 
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,7 +22,7 @@ import lombok.Setter;
 public class Question {
 	
 	private String question;
-	private String sessionId;
+	private UUID playerId;
 
 	
 	

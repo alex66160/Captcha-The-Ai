@@ -3,12 +3,15 @@ package com.captchatheai.backend.lobby;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
+
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentLinkedDeque;
+
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.captchatheai.backend.answer.Answer;
@@ -32,21 +35,21 @@ public class Lobby {
 	private String id;
 	
 	private String password;
-	
-	private String questionWriterSessionId;
-	private String adminSessionId;
+	private UUID aiPlayerId;
+	private UUID questionWriterId;
+	private UUID adminId;
 	private List<Player> players = new CopyOnWriteArrayList<>();
 	private Map<String, Player> sessionIdToPlayer = new ConcurrentHashMap<>();
-	private Map<String, Player> nameToPlayer = new ConcurrentHashMap<>();
-	private String playerToBeEliminatedSessionId;
+	private Map<UUID, Player> idToPlayer = new ConcurrentHashMap<>();
+	private UUID eliminatedPlayerId;
 	
-	private List<String> tiedPlayerNames = new CopyOnWriteArrayList<>();
+	private List<UUID> tiedPlayerId = new CopyOnWriteArrayList<>();
 	
-	private Queue<ChatMessage> chatMessages = new ConcurrentLinkedQueue<>();
+	private Deque<ChatMessage> chatHistory = new ConcurrentLinkedDeque<>();
 	private List<Answer> answers = new CopyOnWriteArrayList<>();
 	private Question question;
 	
-	private Map<String, String> voterToVoteTarget;
+	private Map<UUID, UUID> voterToVoteTarget;
 	
 	private LobbyPhase lobbyPhase;
 	private Instant phaseEndTime;

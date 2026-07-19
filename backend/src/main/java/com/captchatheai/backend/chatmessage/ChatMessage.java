@@ -1,4 +1,6 @@
 package com.captchatheai.backend.chatmessage;
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -7,7 +9,8 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 public class ChatMessage {
-
+	
+	private UUID playerId;
 	private String message;
-	private String playerName;
+	
 }
