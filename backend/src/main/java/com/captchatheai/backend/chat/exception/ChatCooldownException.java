@@ -1,4 +1,4 @@
-package com.captchatheai.backend.chatmessage;
+package com.captchatheai.backend.chat.exception;
 
 
 public class ChatCooldownException extends RuntimeException {

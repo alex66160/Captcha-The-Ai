@@ -1,8 +1,9 @@
-package com.captchatheai.backend.chatmessage;
+package com.captchatheai.backend.chat;
 
 
 import java.time.Instant;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -10,10 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import com.captchatheai.backend.chat.exception.ChatCooldownException;
 import com.captchatheai.backend.lobby.Lobby;
 import com.captchatheai.backend.lobby.LobbyService;
-import com.captchatheai.backend.player.PlayerDisconnectedException;
+import com.captchatheai.backend.player.Player;
 import com.captchatheai.backend.player.PlayerState;
+import com.captchatheai.backend.player.exception.PlayerDisconnectedException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,8 +32,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ChatService {
 	
-	/** Map to store when a player last sent a chat message */
-	private final Map<UUID, Instant> lastSentMessage = new ConcurrentHashMap<>();
+
 	
 	/** Cooldown duration for sending chat messages */
 	private static final long CHAT_COOLDOWN_DURATION = 3L;
@@ -52,59 +54,53 @@ public class ChatService {
 	 * @param message the chat message that was sent
 	 */
 	public void sendChatMessage(String lobbyId, UUID playerId, String message) {
-		PlayerState playerState = lobbyService.getPlayerById(lobbyId, playerId).getState();
-		if (playerState == PlayerState.DISCONNECTED) {
-			throw new PlayerDisconnectedException();
-		}
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized (lobby) {
+			Player player = lobbyService.getPlayerById(lobbyId, playerId);
+			if (player.getState() == PlayerState.DISCONNECTED) {
+				throw new PlayerDisconnectedException();
+			}
 		
 		// Make sure that the player's chat cooldown has finished
-		synchronized (lastSentMessage) {
-			if (lastSentMessage.get(playerId) != null && 
-					Instant.now().isBefore(lastSentMessage.get(playerId).plusSeconds(CHAT_COOLDOWN_DURATION) )) {
+		
+			if (player.getLastChatTime() != null && 
+					Instant.now().isBefore(player.getLastChatTime().plusSeconds(CHAT_COOLDOWN_DURATION) )) {
 				
 				throw new ChatCooldownException();
 			}
-			lastSentMessage.put(playerId, Instant.now());
-		}
+			player.setLastChatTime(Instant.now());
 		
 		
 		
 		
-		Deque<ChatMessage> chatHistory = lobbyService.getLobbyById(lobbyId).getChatHistory();
 		
-		ChatMessage chatMessage = new ChatMessage(playerId, message);
-		
-		if (playerState == PlayerState.ALIVE) {
-			// Synchronize chatHistory to make sure that the max chat message limit
-			// is never exceeded
-			synchronized (chatHistory) {
-				
+			Deque<ChatMessage> chatHistory = lobbyService.getLobbyById(lobbyId).getChatHistory();
+			
+			ChatMessage chatMessage = new ChatMessage(playerId, message);
+			
+			if (player.getState() == PlayerState.ALIVE || player.getState() == PlayerState.WAITING) {
 				if (chatHistory.size() >= MAX_CHAT_MESSAGES) {
 					chatHistory.removeFirst();
 				} 
 				chatHistory.addLast(chatMessage);
+		
 			}
 			
+			messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/chat", chatMessage);
 			
-		}
-		
-		messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/chat", chatMessage);
-		
-		if (playerState == PlayerState.SPECTATOR) {
-			messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/chat/spectator", chatMessage);
+			if (player.getState() == PlayerState.SPECTATOR) {
+				messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/chat/spectator", chatMessage);
+			}
 		}
 	}
 	
-	/** 
-	 * Deletes the given entry for a playerId in the chatRateLimiter map 
-	 * to free up space when a player disconnects or leaves from a lobby. 
-	 * 
-	 * @param playerId the playerId to remove from the rate limiter
-	 */
-	public void deleteRateLimiterEntry(UUID playerId) {
-		lastSentMessage.remove(playerId);
-	}
 	
+	public void deleteChatHistory(String lobbyId) {
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized (lobby) {
+			lobby.getChatHistory().clear();
+		}
+	}
 
 	
 }

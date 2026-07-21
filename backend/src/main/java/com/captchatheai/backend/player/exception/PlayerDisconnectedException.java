@@ -1,4 +1,4 @@
-package com.captchatheai.backend.player;
+package com.captchatheai.backend.player.exception;
 
 public class PlayerDisconnectedException extends RuntimeException {
 

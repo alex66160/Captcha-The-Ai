@@ -1,4 +1,4 @@
-package com.captchatheai.backend.lobby;
+package com.captchatheai.backend.lobby.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;

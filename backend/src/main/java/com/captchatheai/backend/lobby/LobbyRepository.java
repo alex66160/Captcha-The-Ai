@@ -17,26 +17,26 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class LobbyRepository {
 
-	private final Map<String, Lobby> lobbies = new ConcurrentHashMap<>();
+	private final Map<String, Lobby> lobbyById = new ConcurrentHashMap<>();
 	
 	public Optional<Lobby> findById(String id) {
-		return Optional.ofNullable(lobbies.get(id));
+		return Optional.ofNullable(lobbyById.get(id));
 	}
 	
 	public Collection<Lobby> findAll() {
-		return lobbies.values();
+		return lobbyById.values();
 	}
 	
 	public void save(Lobby lobby) {
-		lobbies.put(lobby.getId(), lobby);
+		lobbyById.put(lobby.getId(), lobby);
 	}
 	
 	public void deleteById(String id) {
-		lobbies.remove(id);
+		lobbyById.remove(id);
 	}
 	
 	
 	public long count() {
-		return lobbies.size();
+		return lobbyById.size();
 	}
 }

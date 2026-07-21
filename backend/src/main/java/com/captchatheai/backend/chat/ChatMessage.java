@@ -1,4 +1,4 @@
-package com.captchatheai.backend.chatmessage;
+package com.captchatheai.backend.chat;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;

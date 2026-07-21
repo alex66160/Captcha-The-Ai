@@ -6,8 +6,9 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.captchatheai.backend.lobby.exception.LobbyNotFoundException;
 import com.captchatheai.backend.player.Player;
-import com.captchatheai.backend.player.PlayerNotFoundException;
+import com.captchatheai.backend.player.exception.PlayerNotFoundException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -30,7 +31,7 @@ public class LobbyService {
 	
 	
     public LobbyPhase getLobbyPhase(String lobbyId) {
-    	return getLobbyById(lobbyId).getLobbyPhase();
+    	return getLobbyById(lobbyId).getPhase();
     }
     
     public Player getPlayerById(String lobbyId, UUID playerId) {
