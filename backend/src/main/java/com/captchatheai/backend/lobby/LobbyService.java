@@ -34,12 +34,5 @@ public class LobbyService {
     	return getLobbyById(lobbyId).getPhase();
     }
     
-    public Player getPlayerById(String lobbyId, UUID playerId) {
-    	Player player = getLobbyById(lobbyId).getPlayersById().get(playerId);
-    	if (player == null) {
-    		throw new PlayerNotFoundException();
-    	}
-    	return player;
-    	
-    }
+ 
 }

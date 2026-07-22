@@ -1,6 +1,7 @@
 package com.captchatheai.backend.chat;
 
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Deque;
 import java.util.HashMap;
@@ -11,10 +12,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import com.captchatheai.backend.chat.exception.CannotChatException;
 import com.captchatheai.backend.chat.exception.ChatCooldownException;
 import com.captchatheai.backend.lobby.Lobby;
+import com.captchatheai.backend.lobby.LobbyPhase;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
+import com.captchatheai.backend.player.PlayerService;
 import com.captchatheai.backend.player.PlayerState;
 import com.captchatheai.backend.player.exception.PlayerDisconnectedException;
 
@@ -43,6 +47,8 @@ public class ChatService {
 	/** Lobby service to use */
 	private final LobbyService lobbyService;
 	
+	private final PlayerService playerService;
+	
 	private final SimpMessagingTemplate messagingTemplate;
 	/**
 	 * Receives a chat message from a player and checks if they are over the cooldown,
@@ -56,9 +62,11 @@ public class ChatService {
 	public void sendChatMessage(String lobbyId, UUID playerId, String message) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
-			Player player = lobbyService.getPlayerById(lobbyId, playerId);
-			if (player.getState() == PlayerState.DISCONNECTED) {
-				throw new PlayerDisconnectedException();
+			Player player = playerService.getPlayerById(lobbyId, playerId);
+			PlayerState playerState = player.getState();
+			if (playerState == PlayerState.DISCONNECTED || playerState == PlayerState.WAITING 
+					|| lobby.getPhase() == LobbyPhase.INTERMISSION || lobby.getPhase() == LobbyPhase.STARTING) {
+				throw new CannotChatException();
 			}
 		
 		// Make sure that the player's chat cooldown has finished
@@ -76,21 +84,21 @@ public class ChatService {
 		
 			Deque<ChatMessage> chatHistory = lobbyService.getLobbyById(lobbyId).getChatHistory();
 			
-			ChatMessage chatMessage = new ChatMessage(playerId, message);
-			
-			if (player.getState() == PlayerState.ALIVE || player.getState() == PlayerState.WAITING) {
+			ChatMessage chatMessage = new ChatMessage(playerId, message, Duration.between(lobby.getGameStartTime(), Instant.now()).toSeconds());
+			ChatMessageDto chatMessageDto = new ChatMessageDto(player.getName(), message);
+			if (playerState == PlayerState.ALIVE) {
 				if (chatHistory.size() >= MAX_CHAT_MESSAGES) {
 					chatHistory.removeFirst();
 				} 
 				chatHistory.addLast(chatMessage);
-		
+				messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/chat", chatMessageDto);
 			}
 			
-			messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/chat", chatMessage);
 			
-			if (player.getState() == PlayerState.SPECTATOR) {
-				messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/chat/spectator", chatMessage);
-			}
+			
+			
+			messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/chat/spectator", chatMessageDto);
+			
 		}
 	}
 	

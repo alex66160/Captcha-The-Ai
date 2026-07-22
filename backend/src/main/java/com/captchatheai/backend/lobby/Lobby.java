@@ -39,7 +39,6 @@ public class Lobby {
 	
 	
 	private UUID aiPlayerId;
-	private UUID adminId;
 	// we need to keep an ordered list of the playerids to show on the playerlist
 	
 	private List<UUID> playerIds = new ArrayList<>();
@@ -74,5 +73,6 @@ public class Lobby {
 	private LobbyPhase phase;
 	private Instant phaseEndTime;
 	
+	private Instant gameStartTime;
 	private int roundCount;
 }

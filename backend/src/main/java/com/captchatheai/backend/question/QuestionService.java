@@ -9,6 +9,7 @@ import com.captchatheai.backend.lobby.LobbyPhase;
 import com.captchatheai.backend.lobby.LobbyRepository;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
+import com.captchatheai.backend.player.PlayerService;
 import com.captchatheai.backend.question.exception.NotQuestionPhaseException;
 import com.captchatheai.backend.question.exception.NotQuestionWriterException;
 import com.captchatheai.backend.question.exception.QuestionAlreadyWrittenException;
@@ -25,11 +26,13 @@ public class QuestionService {
 	
 	private final LobbyService lobbyService;
 	
+	private final PlayerService playerService;
+	
 	
 	public QuestionDto getQuestion(String lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
-			Player questionWriter = lobbyService.getPlayerById(lobbyId, lobby.getQuestionWriterId());
+			Player questionWriter = playerService.getPlayerById(lobbyId, lobby.getQuestionWriterId());
 			if (lobby.getPhase() != LobbyPhase.ANSWER && 
 					lobby.getPhase() != LobbyPhase.DISCUSS && 
 					lobby.getPhase() != LobbyPhase.VOTING) {
