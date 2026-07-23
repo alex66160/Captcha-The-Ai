@@ -30,9 +30,7 @@ public class LobbyService {
 	}
 	
 	
-    public LobbyPhase getLobbyPhase(String lobbyId) {
-    	return getLobbyById(lobbyId).getPhase();
-    }
+   
     
  
 }

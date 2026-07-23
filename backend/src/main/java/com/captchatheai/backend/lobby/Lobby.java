@@ -43,7 +43,7 @@ public class Lobby {
 	
 	private List<UUID> playerIds = new ArrayList<>();
 	private Map<UUID, Player> playersById = new HashMap<>();
-	private Map<String, Player> playersBySessionId = new HashMap<>();
+	private Map<String, UUID> playerIdsBySessionId = new HashMap<>();
 
 	
 	

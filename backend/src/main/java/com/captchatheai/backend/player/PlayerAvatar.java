@@ -22,6 +22,6 @@ public enum PlayerAvatar {
 	SHARK,
 	OCTOPUS,
 	CRAB,
-	GHOST,
-	HIDDEN;
+	SPECTATING,
+	WAITING;
 }
