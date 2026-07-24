@@ -1,4 +1,6 @@
 package com.captchatheai.backend.chat;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -10,7 +12,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class ChatMessage {
 	
-	private UUID playerId;
+	private String playerName;
 	private String message;
-	
+	private long sentTime;
 }

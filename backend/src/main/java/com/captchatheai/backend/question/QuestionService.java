@@ -1,5 +1,6 @@
 package com.captchatheai.backend.question;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -9,6 +10,7 @@ import com.captchatheai.backend.lobby.LobbyPhase;
 import com.captchatheai.backend.lobby.LobbyRepository;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
+import com.captchatheai.backend.player.PlayerService;
 import com.captchatheai.backend.question.exception.NotQuestionPhaseException;
 import com.captchatheai.backend.question.exception.NotQuestionWriterException;
 import com.captchatheai.backend.question.exception.QuestionAlreadyWrittenException;
@@ -25,11 +27,13 @@ public class QuestionService {
 	
 	private final LobbyService lobbyService;
 	
+	private final PlayerService playerService;
+	
 	
 	public QuestionDto getQuestion(String lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
-			Player questionWriter = lobbyService.getPlayerById(lobbyId, lobby.getQuestionWriterId());
+			Player questionWriter = playerService.getPlayerById(lobbyId, lobby.getQuestionWriterId());
 			if (lobby.getPhase() != LobbyPhase.ANSWER && 
 					lobby.getPhase() != LobbyPhase.DISCUSS && 
 					lobby.getPhase() != LobbyPhase.VOTING) {
@@ -43,6 +47,22 @@ public class QuestionService {
 		}
 		
 		
+	}
+	
+	public void chooseNextQuestionWriter(String lobbyId) {
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized(lobby) {
+			List<UUID> playersById = lobby.getPlayerIds();
+			UUID oldQuestionWriterId = lobby.getQuestionWriterId();
+			
+			int indexOfOldQuestionWriterId = playersById.indexOf(oldQuestionWriterId);
+			
+			UUID newQuestionWriterId = playersById.get((indexOfOldQuestionWriterId + 1) % playersById.size());
+			
+			lobby.setQuestionWriterId(newQuestionWriterId);
+			
+			
+		}
 	}
 	
 	

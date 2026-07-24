@@ -13,9 +13,8 @@ import lombok.Setter;
 @AllArgsConstructor
 public class Player {
 
-	private UUID id;
+	private final UUID id = UUID.randomUUID();
 	private String sessionId;
-	
 	private String name;
 	private PlayerAvatar avatar;
 	private PlayerState state;
