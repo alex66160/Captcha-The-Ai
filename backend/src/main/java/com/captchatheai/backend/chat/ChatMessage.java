@@ -12,7 +12,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class ChatMessage {
 	
-	private UUID playerId;
+	private String playerName;
 	private String message;
 	private long sentTime;
 }

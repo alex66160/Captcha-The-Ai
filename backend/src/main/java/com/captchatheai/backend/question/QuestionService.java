@@ -1,5 +1,6 @@
 package com.captchatheai.backend.question;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -46,6 +47,22 @@ public class QuestionService {
 		}
 		
 		
+	}
+	
+	public void chooseNextQuestionWriter(String lobbyId) {
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized(lobby) {
+			List<UUID> playersById = lobby.getPlayerIds();
+			UUID oldQuestionWriterId = lobby.getQuestionWriterId();
+			
+			int indexOfOldQuestionWriterId = playersById.indexOf(oldQuestionWriterId);
+			
+			UUID newQuestionWriterId = playersById.get((indexOfOldQuestionWriterId + 1) % playersById.size());
+			
+			lobby.setQuestionWriterId(newQuestionWriterId);
+			
+			
+		}
 	}
 	
 	

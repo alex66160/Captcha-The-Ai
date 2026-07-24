@@ -50,7 +50,7 @@ public class Lobby {
 	
 	
 	private UUID eliminatedPlayerId;
-	private Set<UUID> toBeKickedPlayerIds = new HashSet<>();
+	
 	
 	
 	

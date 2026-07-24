@@ -1,5 +1,7 @@
 package com.captchatheai.backend.player;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -11,6 +13,8 @@ import com.captchatheai.backend.lobby.Lobby;
 import com.captchatheai.backend.lobby.LobbyPhase;
 import com.captchatheai.backend.lobby.LobbyRepository;
 import com.captchatheai.backend.lobby.LobbyService;
+import com.captchatheai.backend.player.exception.AiPlayerAccessDeniedException;
+import com.captchatheai.backend.player.exception.PlayerDisconnectedException;
 import com.captchatheai.backend.player.exception.PlayerNotFoundException;
 
 import lombok.RequiredArgsConstructor;
@@ -48,9 +52,10 @@ public class PlayerService {
 	public PlayersDto getPlayers(String lobbyId, UUID playerId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		
-		Map<UUID, Player> playersById = lobby.getPlayersById();
+		List<UUID> playerIds = lobby.getPlayerIds();
 		
-		List<PlayerDto> players = playersById.values().stream().map((player) -> {
+		List<PlayerDto> players = playerIds.stream().map((playerIdFromPlayerIds) -> {
+			Player player = getPlayerById(lobbyId, playerIdFromPlayerIds);
 			return new PlayerDto(player.getName(), player.getAvatar(), 
 					playerId.equals(lobby.getQuestionWriterId()), player.getId().equals(playerId));
 			
@@ -90,12 +95,12 @@ public class PlayerService {
 				playerState = PlayerState.WAITING;
 			} else {
 				playerName = "SPECTATOR";
-				playerAvatar = PlayerAvatar.SPECTATING;
+				playerAvatar = PlayerAvatar.SPECTATOR;
 				playerState = PlayerState.SPECTATOR;
 			}
 			
 			
-			Player player = new Player(playerName, playerAvatar, playerState, null);
+			Player player = new Player(sessionId, playerName, playerAvatar, playerState, null);
 			
 			List<UUID> players = lobby.getPlayerIds();
 			Map<UUID, Player> playersById = lobby.getPlayersById();
@@ -117,12 +122,85 @@ public class PlayerService {
 	}
 	
 	public void disconnectPlayer(String lobbyId, UUID playerId) {
-		
-		
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized(lobby) {
+			Player player = getPlayerById(lobbyId, playerId);
+			PlayerState playerState = player.getState();
+			
+			if (playerState == PlayerState.DISCONNECTED) {
+				throw new PlayerDisconnectedException();
+			}
+			List<UUID> players = lobby.getPlayerIds();
+			Map<UUID, Player> playersById = lobby.getPlayersById();
+			Map<String, UUID> playerIdsBySessionId = lobby.getPlayerIdsBySessionId();
+			
+			players.remove(playerId);
+			
+			if (playerState == PlayerState.WAITING || playerState == PlayerState.SPECTATOR) {
+				playersById.remove(playerId);
+				playerIdsBySessionId.remove(player.getSessionId());
+			}
+			
+			if (playerState == PlayerState.ALIVE) {
+				player.setState(PlayerState.DISCONNECTED);
+			}
+			
+			broadcastPlayers(lobbyId);
+			
+			
+			
+		}
 		
 		
 	}
 	
+	public void assignPlayerIdentites (String lobbyId) {
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized(lobby) {
+			List<UUID> playerIds = lobby.getPlayerIds();
+			List<PlayerAvatar> validAvatars = Arrays.stream(PlayerAvatar.values())
+					.filter((playerAvatar) -> playerAvatar != PlayerAvatar.WAITING && playerAvatar != PlayerAvatar.SPECTATOR).toList();
+			
+			Collections.shuffle(validAvatars);
+			
+			for (int i = 0; i < playerIds.size(); i++) {
+				Player player = getPlayerById(lobbyId, playerIds.get(i));
+				player.setAvatar(validAvatars.get(i));
+				player.setName(validAvatars.get(i).getName());
+				player.setState(PlayerState.ALIVE);
+			}
+			
+			
+			broadcastPlayers(lobbyId);
+			
+			
+			
+		}
+	}
 	
+	public EliminatedPlayerDto getEliminatedPlayer(String lobbyId) {
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized(lobby) {
+			Player eliminatedPlayer = getPlayerById(lobbyId, lobby.getEliminatedPlayerId());
+			return new EliminatedPlayerDto(eliminatedPlayer.getName(), 
+					eliminatedPlayer.getAvatar(), eliminatedPlayer.getId().equals(lobby.getAiPlayerId()));
+			
+			
+			
+			
+		}
+	}
+	
+	public AiPlayerDto getAiPlayer(String lobbyId) {
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized(lobby) {
+			if (lobby.getPhase() != LobbyPhase.WIN && lobby.getPhase() != LobbyPhase.LOSE) {
+				throw new AiPlayerAccessDeniedException();
+			}
+			
+			Player aiPlayer = getPlayerById(lobbyId, lobby.getAiPlayerId());
+			return new AiPlayerDto(aiPlayer.getName(), aiPlayer.getAvatar());
+		}
+	}
 	
 }

@@ -84,7 +84,7 @@ public class ChatService {
 		
 			Deque<ChatMessage> chatHistory = lobbyService.getLobbyById(lobbyId).getChatHistory();
 			
-			ChatMessage chatMessage = new ChatMessage(playerId, message, Duration.between(lobby.getGameStartTime(), Instant.now()).toSeconds());
+			ChatMessage chatMessage = new ChatMessage(player.getName(), message, Duration.between(lobby.getGameStartTime(), Instant.now()).toSeconds());
 			ChatMessageDto chatMessageDto = new ChatMessageDto(player.getName(), message);
 			if (playerState == PlayerState.ALIVE) {
 				if (chatHistory.size() >= MAX_CHAT_MESSAGES) {
