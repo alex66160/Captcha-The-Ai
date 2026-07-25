@@ -37,12 +37,18 @@ public class PlayerService {
 
 	}
 	
+	public UUID getPlayerIdByName(String lobbyId, String playerName) {
+		UUID playerId = lobbyService.getLobbyById(lobbyId).getPlayerIdsByName().get(playerName);
+		if (playerId == null) {
+			throw new PlayerNotFoundException();
+		}
+		return playerId;
+	}
 	
 	
 	
-	
-	public UUID getPlayerIdBySessionId(String lobbyId, String sessionId) {
-		UUID playerId = lobbyService.getLobbyById(lobbyId).getPlayerIdsBySessionId().get(sessionId);
+	public UUID getPlayerIdBySessionId(String lobbyId, String playerSessionId) {
+		UUID playerId = lobbyService.getLobbyById(lobbyId).getPlayerIdsBySessionId().get(playerSessionId);
 		if (playerId == null) {
 			throw new PlayerNotFoundException();
 		}
@@ -162,12 +168,15 @@ public class PlayerService {
 					.filter((playerAvatar) -> playerAvatar != PlayerAvatar.WAITING && playerAvatar != PlayerAvatar.SPECTATOR).toList();
 			
 			Collections.shuffle(validAvatars);
+			Map<String, UUID> playerIdsByName = lobby.getPlayerIdsByName();
 			
 			for (int i = 0; i < playerIds.size(); i++) {
+				
 				Player player = getPlayerById(lobbyId, playerIds.get(i));
 				player.setAvatar(validAvatars.get(i));
 				player.setName(validAvatars.get(i).getName());
 				player.setState(PlayerState.ALIVE);
+				playerIdsByName.put(player.getName(), player.getId());
 			}
 			
 			
