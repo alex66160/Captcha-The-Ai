@@ -11,6 +11,7 @@ import com.captchatheai.backend.lobby.LobbyRepository;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
 import com.captchatheai.backend.player.PlayerService;
+import com.captchatheai.backend.player.PlayerState;
 import com.captchatheai.backend.question.exception.NotQuestionPhaseException;
 import com.captchatheai.backend.question.exception.NotQuestionWriterException;
 import com.captchatheai.backend.question.exception.QuestionAlreadyWrittenException;
@@ -55,9 +56,17 @@ public class QuestionService {
 			List<UUID> playersById = lobby.getPlayerIds();
 			UUID oldQuestionWriterId = lobby.getQuestionWriterId();
 			
-			int indexOfOldQuestionWriterId = playersById.indexOf(oldQuestionWriterId);
+		
+		
 			
-			UUID newQuestionWriterId = playersById.get((indexOfOldQuestionWriterId + 1) % playersById.size());
+			int idx = playersById.indexOf(oldQuestionWriterId);
+			
+			
+			UUID newQuestionWriterId = playersById.get((++idx) % playersById.size());
+			while (playerService.getPlayerById(lobbyId, newQuestionWriterId).getState() != PlayerState.ALIVE) {
+				newQuestionWriterId = playersById.get((++idx) % playersById.size());
+			}
+			
 			
 			lobby.setQuestionWriterId(newQuestionWriterId);
 			

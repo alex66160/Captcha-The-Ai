@@ -44,7 +44,7 @@ public class Lobby {
 	private List<UUID> playerIds = new ArrayList<>();
 	private Map<UUID, Player> playersById = new HashMap<>();
 	private Map<String, UUID> playerIdsBySessionId = new HashMap<>();
-
+	private Map<String, UUID> playerIdsByName = new HashMap<>();
 	
 	
 	
@@ -54,7 +54,7 @@ public class Lobby {
 	
 	
 	
-	private Set<UUID> tiedPlayerIds = new HashSet<>();
+	private List<UUID> tiedPlayerIds = new ArrayList<>();
 	
 	private UUID questionWriterId;
 	private String question;
@@ -62,7 +62,7 @@ public class Lobby {
 	
 	
 	private Map<UUID, UUID> voteTargetByVoter = new HashMap<>();
-	
+	private Map<UUID, List<UUID>> VotersByVoteTarget = new HashMap<>();
 
 	
 	
