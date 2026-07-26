@@ -1,5 +1,7 @@
 package com.captchatheai.backend.vote;
 
-public class TiedPlayerDto {
+import com.captchatheai.backend.player.PlayerAvatar;
+
+public record TiedPlayerDto (String playerName, PlayerAvatar playerAvatar, boolean isVotedOut){
 
 }

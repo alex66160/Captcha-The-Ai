@@ -54,7 +54,7 @@ public class Lobby {
 	
 	
 	
-	private Set<UUID> tiedPlayerIds = new HashSet<>();
+	private List<UUID> tiedPlayerIds = new ArrayList<>();
 	
 	private UUID questionWriterId;
 	private String question;
@@ -62,7 +62,7 @@ public class Lobby {
 	
 	
 	private Map<UUID, UUID> voteTargetByVoter = new HashMap<>();
-	private Map<UUID, Set<UUID>> VotersByVoteTarget = new HashMap<>();
+	private Map<UUID, List<UUID>> VotersByVoteTarget = new HashMap<>();
 
 	
 	
