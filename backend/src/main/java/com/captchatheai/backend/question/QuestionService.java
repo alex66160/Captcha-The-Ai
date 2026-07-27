@@ -31,7 +31,7 @@ public class QuestionService {
 	private final PlayerService playerService;
 	
 	
-	public QuestionDto getQuestion(String lobbyId) {
+	public QuestionDto getQuestion(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			Player questionWriter = playerService.getPlayerById(lobbyId, lobby.getQuestionWriterId());
@@ -50,7 +50,7 @@ public class QuestionService {
 		
 	}
 	
-	public void chooseNextQuestionWriter(String lobbyId) {
+	public void chooseNextQuestionWriter(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			List<UUID> playersById = lobby.getPlayerIds();
@@ -75,7 +75,7 @@ public class QuestionService {
 	}
 	
 	
-	public void sendQuestion(String lobbyId, UUID playerId, String question) {
+	public void sendQuestion(int lobbyId, UUID playerId, String question) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			if (lobby.getPhase() != LobbyPhase.QUESTION) {
@@ -94,7 +94,7 @@ public class QuestionService {
 		}
 	}
 	
-	public void deleteQuestion(String lobbyId) {
+	public void deleteQuestion(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			lobby.setQuestion(null);

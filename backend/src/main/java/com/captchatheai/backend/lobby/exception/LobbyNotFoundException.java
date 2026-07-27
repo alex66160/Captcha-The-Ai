@@ -12,7 +12,7 @@ public class LobbyNotFoundException extends RuntimeException {
 	 */
 	private static final long serialVersionUID = 1L;
 
-	public LobbyNotFoundException(String id) {
+	public LobbyNotFoundException(int id) {
 		super("Lobby with id " + id + " was not found.");
 	}
 }

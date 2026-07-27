@@ -33,7 +33,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class Lobby {
 	
-	private String id;
+	private final int id;
 	
 	private String password;
 	

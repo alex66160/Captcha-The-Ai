@@ -28,7 +28,7 @@ public class PlayerService {
 
 	
 	private final SimpMessagingTemplate messagingTemplate;
-	public Player getPlayerById(String lobbyId, UUID playerId) {
+	public Player getPlayerById(int lobbyId, UUID playerId) {
 		Player player = lobbyService.getLobbyById(lobbyId).getPlayersById().get(playerId);
 		if (player == null) {
 			throw new PlayerNotFoundException();
@@ -37,7 +37,7 @@ public class PlayerService {
 
 	}
 	
-	public UUID getPlayerIdByName(String lobbyId, String playerName) {
+	public UUID getPlayerIdByName(int lobbyId, String playerName) {
 		UUID playerId = lobbyService.getLobbyById(lobbyId).getPlayerIdsByName().get(playerName);
 		if (playerId == null) {
 			throw new PlayerNotFoundException();
@@ -47,7 +47,7 @@ public class PlayerService {
 	
 	
 	
-	public UUID getPlayerIdBySessionId(String lobbyId, String playerSessionId) {
+	public UUID getPlayerIdBySessionId(int lobbyId, String playerSessionId) {
 		UUID playerId = lobbyService.getLobbyById(lobbyId).getPlayerIdsBySessionId().get(playerSessionId);
 		if (playerId == null) {
 			throw new PlayerNotFoundException();
@@ -55,7 +55,7 @@ public class PlayerService {
 		return playerId;
 	}
 	
-	public PlayersDto getPlayers(String lobbyId, UUID playerId) {
+	public PlayersDto getPlayers(int lobbyId, UUID playerId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		
 		List<UUID> playerIds = lobby.getPlayerIds();
@@ -75,7 +75,7 @@ public class PlayerService {
 	}
 	
 	
-	public void broadcastPlayers(String lobbyId) {
+	public void broadcastPlayers(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			Map<String, UUID> playerIdsBySessionId = lobby.getPlayerIdsBySessionId();
@@ -89,7 +89,7 @@ public class PlayerService {
 		
 	}
 	
-	public Player joinPlayer(String lobbyId, String sessionId) {
+	public Player addPlayer(int lobbyId, String sessionId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			String playerName;
@@ -127,7 +127,7 @@ public class PlayerService {
 		}
 	}
 	
-	public void disconnectPlayer(String lobbyId, UUID playerId) {
+	public void disconnectPlayer(int lobbyId, UUID playerId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			Player player = getPlayerById(lobbyId, playerId);
@@ -160,7 +160,7 @@ public class PlayerService {
 		
 	}
 	
-	public void assignPlayerIdentites (String lobbyId) {
+	public void assignPlayerIdentites (int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			List<UUID> playerIds = lobby.getPlayerIds();
@@ -187,7 +187,7 @@ public class PlayerService {
 		}
 	}
 	
-	public EliminatedPlayerDto getEliminatedPlayer(String lobbyId) {
+	public EliminatedPlayerDto getEliminatedPlayer(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			Player eliminatedPlayer = getPlayerById(lobbyId, lobby.getEliminatedPlayerId());
@@ -200,7 +200,7 @@ public class PlayerService {
 		}
 	}
 	
-	public AiPlayerDto getAiPlayer(String lobbyId) {
+	public AiPlayerDto getAiPlayer(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			if (lobby.getPhase() != LobbyPhase.WIN && lobby.getPhase() != LobbyPhase.LOSE) {
