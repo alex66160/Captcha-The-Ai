@@ -1,5 +1,7 @@
 package com.captchatheai.backend.player;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import com.captchatheai.backend.lobby.Lobby;
 import com.captchatheai.backend.lobby.LobbyPhase;
+import com.captchatheai.backend.lobby.LobbyPhaseDto;
 import com.captchatheai.backend.lobby.LobbyRepository;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.exception.AiPlayerAccessDeniedException;
@@ -122,12 +125,19 @@ public class PlayerService {
 			
 			broadcastPlayers(lobbyId);
 			
+			if (lobby.getPhase() == LobbyPhase.INTERMISSION && players.size() == 3) {
+				lobby.setPhase(LobbyPhase.STARTING);
+				lobby.setPhaseEndTime(Instant.now().plusSeconds(30));
+				// broadcast that we are in the starting phase.
+				messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/phase", new LobbyPhaseDto(lobby.getPhase()));
+				
+			}
 			
 			return player;
 		}
 	}
 	
-	public void disconnectPlayer(int lobbyId, UUID playerId) {
+	public void removePlayer(int lobbyId, UUID playerId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			Player player = getPlayerById(lobbyId, playerId);
@@ -151,9 +161,14 @@ public class PlayerService {
 				player.setState(PlayerState.DISCONNECTED);
 			}
 			
+			messagingTemplate.convertAndSend("/queue/lobby/" + lobbyId + "/disconnect/" + player.getSessionId());
+			
 			broadcastPlayers(lobbyId);
 			
-			
+			if (lobby.getPhase() == LobbyPhase.STARTING && players.size() == 2) {
+				lobby.setPhase(LobbyPhase.INTERMISSION);
+				lobby.setPhaseEndTime(Instant.now());
+			}
 			
 		}
 		

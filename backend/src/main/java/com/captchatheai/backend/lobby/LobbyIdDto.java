@@ -1,5 +1,5 @@
 package com.captchatheai.backend.lobby;
 
-public record LobbyIdDto (String lobbyId){
+public record LobbyIdDto (int lobbyId){
 
 }

@@ -2,6 +2,7 @@ package com.captchatheai.backend.lobby;
 
 
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -78,7 +79,7 @@ public class LobbyService {
 				}
 				
 				playerService.addPlayer(lobbyToJoin.getId(), sessionId);
-				messagingTemplate.convertAndSend("/queue/join/" + sessionId, lobbyToJoin.getId());
+				messagingTemplate.convertAndSend("/queue/join/" + sessionId, new LobbyIdDto(lobbyToJoin.getId()));
 				break;
 				
 			}
@@ -109,27 +110,30 @@ public class LobbyService {
 			
 			
 			playerService.addPlayer(lobby.getId(), sessionId);
-			messagingTemplate.convertAndSend("/queue/join/" + sessionId, lobby.getId());
+			messagingTemplate.convertAndSend("/queue/join/" + sessionId, new LobbyIdDto(lobby.getId()));
 			
 			
 		}
 		
 	}
 	public void createLobby(String sessionId, String password) {
-		
-		int lobbyId = ThreadLocalRandom.current().nextInt(100000, 1000000);
-		if (lobbyRepository.findById(lobbyId).isPresent()) {
-			
+		while (true) {
+			int lobbyId = ThreadLocalRandom.current().nextInt(100000, 1000000);
+			Lobby lobby = new Lobby(lobbyId, password);
+			synchronized(lobby) {
+				if (lobbyRepository.create(lobby)) {
+					Player aiPlayer = playerService.addPlayer(lobbyId, null);
+					lobby.setAiPlayerId(aiPlayer.getId());
+					playerService.addPlayer(lobbyId, sessionId);
+					messagingTemplate.convertAndSend("/queue/join/" + sessionId, new LobbyIdDto(lobby.getId()));
+					break;
+				}
+			}
 		}
-		
-		playerService.addPlayer(lobbyId, null);
-		
-		
-//		playerService.addPlayer(lobby.getId(), sessionId);
-//		messagingTemplate.convertAndSend("/queue/join/" + sessionId, lobby.getId());
+	
 	}
 	
-	
+	// implement leave lobby
 	
 	public void deleteLobby(int id) {
 		lobbyRepository.deleteById(id);

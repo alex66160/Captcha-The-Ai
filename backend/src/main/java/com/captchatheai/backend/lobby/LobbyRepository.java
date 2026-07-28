@@ -27,8 +27,8 @@ public class LobbyRepository {
 		return lobbyById.values();
 	}
 	
-	public void save(Lobby lobby) {
-		lobbyById.put(lobby.getId(), lobby);
+	public boolean create(Lobby lobby) {
+		return lobbyById.putIfAbsent(lobby.getId(), lobby) == null;
 	}
 	
 	public void deleteById(int id) {

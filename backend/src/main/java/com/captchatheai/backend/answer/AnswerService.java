@@ -71,6 +71,20 @@ private final LobbyService lobbyService;
 			
 			
 			lobby.getAnswersById().put(playerId, answer);
+			
+			// if everyone answered end phase early
+			
+			// need to iterate through the list of players to check
+			// if anyone didnt answer and kick them (time based not here, sinceits event based)
+			
+			//generate an answer for the ai player (async)
+			// add ai players answer to the answerList
+			
+			
+			// by
+			// setting phase to discuss_start phase
+			// and set time to now + 30 seconds
+			
 		}
 	}
 	

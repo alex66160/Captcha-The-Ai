@@ -22,6 +22,7 @@ import com.captchatheai.backend.player.Player;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 
@@ -30,21 +31,21 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class Lobby {
 	
 	private final int id;
 	
-	private String password;
+	private final String password;
 	
 	
 	private UUID aiPlayerId;
 	// we need to keep an ordered list of the playerids to show on the playerlist
 	
-	private List<UUID> playerIds = new ArrayList<>();
-	private Map<UUID, Player> playersById = new HashMap<>();
-	private Map<String, UUID> playerIdsBySessionId = new HashMap<>();
-	private Map<String, UUID> playerIdsByName = new HashMap<>();
+	private final List<UUID> playerIds = new ArrayList<>();
+	private final Map<UUID, Player> playersById = new HashMap<>();
+	private final Map<String, UUID> playerIdsBySessionId = new HashMap<>();
+	private final Map<String, UUID> playerIdsByName = new HashMap<>();
 	
 	
 	
@@ -54,25 +55,25 @@ public class Lobby {
 	
 	
 	
-	private List<UUID> tiedPlayerIds = new ArrayList<>();
+	private final List<UUID> tiedPlayerIds = new ArrayList<>();
 	
 	private UUID questionWriterId;
 	private String question;
-	private Map<UUID, String> answersById = new HashMap<>();
+	private final Map<UUID, String> answersById = new HashMap<>();
 	
 	
-	private Map<UUID, UUID> voteTargetByVoter = new HashMap<>();
-	private Map<UUID, List<UUID>> VotersByVoteTarget = new HashMap<>();
+	private final Map<UUID, UUID> voteTargetByVoter = new HashMap<>();
+	private final Map<UUID, List<UUID>> VotersByVoteTarget = new HashMap<>();
 
 	
 	
-	private Deque<ChatMessage> chatHistory = new ArrayDeque<>();
+	private final Deque<ChatMessage> chatHistory = new ArrayDeque<>();
 	
-	private List<String> gameHistory = new ArrayList<>();
+	private final List<String> gameHistory = new ArrayList<>();
 	
-	private LobbyPhase phase;
+	private LobbyPhase phase = LobbyPhase.INTERMISSION;
 	private Instant phaseEndTime;
 	
 	private Instant gameStartTime;
-	private int roundCount;
+	private int roundCount = 0;
 }
