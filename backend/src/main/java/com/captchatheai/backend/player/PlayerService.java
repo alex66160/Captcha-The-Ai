@@ -12,8 +12,9 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import com.captchatheai.backend.lobby.Lobby;
+import com.captchatheai.backend.lobby.LobbyInfoDto;
 import com.captchatheai.backend.lobby.LobbyPhase;
-import com.captchatheai.backend.lobby.LobbyPhaseDto;
+
 import com.captchatheai.backend.lobby.LobbyRepository;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.exception.AiPlayerAccessDeniedException;
@@ -129,7 +130,7 @@ public class PlayerService {
 				lobby.setPhase(LobbyPhase.STARTING);
 				lobby.setPhaseEndTime(Instant.now().plusSeconds(30));
 				// broadcast that we are in the starting phase.
-				messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/phase", new LobbyPhaseDto(lobby.getPhase()));
+				//messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/phase", new LobbyInfoDto(lobby.getPhase()));
 				
 			}
 			
@@ -137,7 +138,7 @@ public class PlayerService {
 		}
 	}
 	
-	public void removePlayer(int lobbyId, UUID playerId) {
+	public Player removePlayer(int lobbyId, UUID playerId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			Player player = getPlayerById(lobbyId, playerId);
@@ -161,7 +162,7 @@ public class PlayerService {
 				player.setState(PlayerState.DISCONNECTED);
 			}
 			
-			messagingTemplate.convertAndSend("/queue/lobby/" + lobbyId + "/disconnect/" + player.getSessionId());
+			
 			
 			broadcastPlayers(lobbyId);
 			
@@ -169,13 +170,22 @@ public class PlayerService {
 				lobby.setPhase(LobbyPhase.INTERMISSION);
 				lobby.setPhaseEndTime(Instant.now());
 			}
-			
+			return player;
 		}
 		
 		
 	}
 	
-	public void assignPlayerIdentites (int lobbyId) {
+	public void kickPlayer(int lobbyId, UUID playerId) {
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized(lobby) {
+			Player player = removePlayer(lobbyId, playerId);
+			messagingTemplate.convertAndSend("/queue/lobby/" + lobbyId + "/disconnect/" + player.getSessionId());
+		}
+		
+	}
+	
+	public void assignPlayerIdentities (int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			List<UUID> playerIds = lobby.getPlayerIds();
@@ -226,5 +236,7 @@ public class PlayerService {
 			return new AiPlayerDto(aiPlayer.getName(), aiPlayer.getAvatar());
 		}
 	}
+	
+	
 	
 }

@@ -72,8 +72,8 @@ public class Lobby {
 	private final List<String> gameHistory = new ArrayList<>();
 	
 	private LobbyPhase phase = LobbyPhase.INTERMISSION;
-	private Instant phaseEndTime;
+	private Instant phaseEndTime = Instant.now().plusSeconds(600);
 	
 	private Instant gameStartTime;
-	private int roundCount = 0;
+	private int roundCount = 1;
 }

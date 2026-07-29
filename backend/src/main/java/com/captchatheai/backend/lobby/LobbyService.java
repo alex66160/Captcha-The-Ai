@@ -18,6 +18,7 @@ import com.captchatheai.backend.lobby.exception.LobbyNotFoundException;
 import com.captchatheai.backend.player.Player;
 import com.captchatheai.backend.player.PlayerService;
 import com.captchatheai.backend.player.exception.PlayerNotFoundException;
+import com.captchatheai.backend.question.QuestionService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -34,6 +35,7 @@ public class LobbyService {
 	
 	private final PlayerService playerService;
 	
+	private final QuestionService questionService;
 	private final SimpMessagingTemplate messagingTemplate;
 	
 
@@ -45,6 +47,14 @@ public class LobbyService {
 	
 	public Lobby getLobbyById(int id) {
 		return lobbyRepository.findById(id).orElseThrow(() -> new LobbyNotFoundException(id));
+	}
+	
+	
+	public LobbyInfoDto getLobbyInfo(int id) {
+		Lobby lobby = getLobbyById(id);
+		
+		return new LobbyInfoDto(lobby.getPhase(), lobby.getPhaseEndTime(), lobby.getRoundCount());
+		
 	}
 	
 	public void joinLobby(String sessionId) {
@@ -116,6 +126,15 @@ public class LobbyService {
 		}
 		
 	}
+	
+	
+	public void leaveLobby(int id, UUID playerId) {
+		Lobby lobby = getLobbyById(id);
+		synchronized(lobby) {
+			playerService.removePlayer(id, playerId);
+		}
+		
+	}
 	public void createLobby(String sessionId, String password) {
 		while (true) {
 			int lobbyId = ThreadLocalRandom.current().nextInt(100000, 1000000);
@@ -133,13 +152,128 @@ public class LobbyService {
 	
 	}
 	
-	// implement leave lobby
+
 	
 	public void deleteLobby(int id) {
 		lobbyRepository.deleteById(id);
 		
 	}
    
-    
+	
+	public void advancePhase(int id) {
+		Lobby lobby = getLobbyById(id);
+		synchronized(lobby) {
+			switch(lobby.getPhase()) {
+				
+				case INTERMISSION -> {
+					
+					lobby.getPlayerIds().stream().filter((playerId) -> !playerId.equals(lobby.getAiPlayerId()))
+					.forEach((playerId) -> playerService.kickPlayer(lobby.getId(), playerId));
+					
+					deleteLobby(lobby.getId());
+					
+				}
+				
+				case STARTING -> {
+					lobby.setGameStartTime(Instant.now());
+					playerService.assignPlayerIdentities(lobby.getId());
+					lobby.setPhase(LobbyPhase.INTRO);
+					lobby.setPhaseEndTime(Instant.now().plusSeconds(10));
+					messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
+					
+					
+				}
+				
+				case INTRO -> {
+					questionService.setNextQuestionWriter(lobby.getId());
+					playerService.broadcastPlayers(id);
+					lobby.setPhase(LobbyPhase.QUESTION_START);
+					lobby.setPhaseEndTime(Instant.now().plusSeconds(5));
+					messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
+					
+					
+					
+				}
+				
+				case QUESTION_START -> {
+					lobby.setPhase(LobbyPhase.QUESTION);
+					lobby.setPhaseEndTime(Instant.now().plusSeconds(30));
+					messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
+					if (lobby.getQuestionWriterId().equals(lobby.getAiPlayerId())) {
+						// call llmservice to generate question
+						
+						
+					}
+					
+				}
+				
+				case QUESTION -> {
+					if (lobby.getQuestion() == null && lobby.getQuestionWriterId().equals(lobby.getAiPlayerId())) {
+						lobby.setPhase(LobbyPhase.WIN);
+						lobby.setPhaseEndTime(Instant.now().plusSeconds(10));
+						messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
+						
+						
+					} else if (lobby.getQuestion() == null && !lobby.getQuestionWriterId().equals(lobby.getAiPlayerId())) {
+						lobby.setEliminatedPlayerId(lobby.getQuestionWriterId());
+						questionService.setNextQuestionWriter(id);
+						playerService.kickPlayer(id, lobby.getEliminatedPlayerId());
+						lobby.setPhase(LobbyPhase.QUESTION_EMPTY);
+						lobby.setPhaseEndTime(Instant.now().plusSeconds(5));
+						messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
+					} else {
+					
+						lobby.setPhase(LobbyPhase.ANSWER_START);
+						lobby.setPhaseEndTime(Instant.now().plusSeconds(5));
+						messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
+					}
+					
+				}
+				
+				case QUESTION_DISCONNECT -> {
+					lobby.setPhase(LobbyPhase.QUESTION);
+					lobby.setPhaseEndTime(Instant.now().plusSeconds(30));
+					messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
+					
+				}
+				
+				case QUESTION_EMPTY -> {
+					lobby.setPhase(LobbyPhase.QUESTION);
+					lobby.setPhaseEndTime(Instant.now().plusSeconds(30));
+					messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
+					
+				}
+				
+				case ANSWER_START -> System.out.println();
+				
+				case ANSWER -> System.out.println();
+				
+				case DISCUSS_START -> System.out.println();
+				
+				case DISCUSS -> System.out.println();
+				
+				case VOTING -> System.out.println();
+				
+				case VOTING_RESTART -> System.out.println();
+				
+				case REVEAL_START -> System.out.println();
+				
+				case REVEAL -> System.out.println();
+				
+				case REVEAL_TIE -> System.out.println();
+				
+				case REVEAL_END -> System.out.println();
+				
+				case WIN -> System.out.println();
+				
+				case LOSE -> System.out.println();
+				
+				case LOBBY_SHUTDOWN -> System.out.println();
+				
+			}
+		
+		
+		}
+	}
  
 }

@@ -50,7 +50,7 @@ public class QuestionService {
 		
 	}
 	
-	public void chooseNextQuestionWriter(int lobbyId) {
+	public void setNextQuestionWriter(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			List<UUID> playersById = lobby.getPlayerIds();
