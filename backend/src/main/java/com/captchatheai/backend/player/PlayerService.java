@@ -1,5 +1,7 @@
 package com.captchatheai.backend.player;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -10,7 +12,9 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import com.captchatheai.backend.lobby.Lobby;
+import com.captchatheai.backend.lobby.LobbyInfoDto;
 import com.captchatheai.backend.lobby.LobbyPhase;
+
 import com.captchatheai.backend.lobby.LobbyRepository;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.exception.AiPlayerAccessDeniedException;
@@ -28,7 +32,7 @@ public class PlayerService {
 
 	
 	private final SimpMessagingTemplate messagingTemplate;
-	public Player getPlayerById(String lobbyId, UUID playerId) {
+	public Player getPlayerById(int lobbyId, UUID playerId) {
 		Player player = lobbyService.getLobbyById(lobbyId).getPlayersById().get(playerId);
 		if (player == null) {
 			throw new PlayerNotFoundException();
@@ -37,7 +41,7 @@ public class PlayerService {
 
 	}
 	
-	public UUID getPlayerIdByName(String lobbyId, String playerName) {
+	public UUID getPlayerIdByName(int lobbyId, String playerName) {
 		UUID playerId = lobbyService.getLobbyById(lobbyId).getPlayerIdsByName().get(playerName);
 		if (playerId == null) {
 			throw new PlayerNotFoundException();
@@ -47,7 +51,7 @@ public class PlayerService {
 	
 	
 	
-	public UUID getPlayerIdBySessionId(String lobbyId, String playerSessionId) {
+	public UUID getPlayerIdBySessionId(int lobbyId, String playerSessionId) {
 		UUID playerId = lobbyService.getLobbyById(lobbyId).getPlayerIdsBySessionId().get(playerSessionId);
 		if (playerId == null) {
 			throw new PlayerNotFoundException();
@@ -55,7 +59,7 @@ public class PlayerService {
 		return playerId;
 	}
 	
-	public PlayersDto getPlayers(String lobbyId, UUID playerId) {
+	public PlayersDto getPlayers(int lobbyId, UUID playerId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		
 		List<UUID> playerIds = lobby.getPlayerIds();
@@ -75,7 +79,7 @@ public class PlayerService {
 	}
 	
 	
-	public void broadcastPlayers(String lobbyId) {
+	public void broadcastPlayers(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			Map<String, UUID> playerIdsBySessionId = lobby.getPlayerIdsBySessionId();
@@ -89,7 +93,7 @@ public class PlayerService {
 		
 	}
 	
-	public Player joinPlayer(String lobbyId, String sessionId) {
+	public Player addPlayer(int lobbyId, String sessionId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			String playerName;
@@ -122,12 +126,19 @@ public class PlayerService {
 			
 			broadcastPlayers(lobbyId);
 			
+			if (lobby.getPhase() == LobbyPhase.INTERMISSION && players.size() == 3) {
+				lobby.setPhase(LobbyPhase.STARTING);
+				lobby.setPhaseEndTime(Instant.now().plusSeconds(30));
+				// broadcast that we are in the starting phase.
+				//messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/phase", new LobbyInfoDto(lobby.getPhase()));
+				
+			}
 			
 			return player;
 		}
 	}
 	
-	public void disconnectPlayer(String lobbyId, UUID playerId) {
+	public Player removePlayer(int lobbyId, UUID playerId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			Player player = getPlayerById(lobbyId, playerId);
@@ -151,16 +162,30 @@ public class PlayerService {
 				player.setState(PlayerState.DISCONNECTED);
 			}
 			
+			
+			
 			broadcastPlayers(lobbyId);
 			
-			
-			
+			if (lobby.getPhase() == LobbyPhase.STARTING && players.size() == 2) {
+				lobby.setPhase(LobbyPhase.INTERMISSION);
+				lobby.setPhaseEndTime(Instant.now());
+			}
+			return player;
 		}
 		
 		
 	}
 	
-	public void assignPlayerIdentites (String lobbyId) {
+	public void kickPlayer(int lobbyId, UUID playerId) {
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized(lobby) {
+			Player player = removePlayer(lobbyId, playerId);
+			messagingTemplate.convertAndSend("/queue/lobby/" + lobbyId + "/disconnect/" + player.getSessionId());
+		}
+		
+	}
+	
+	public void assignPlayerIdentities (int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			List<UUID> playerIds = lobby.getPlayerIds();
@@ -187,7 +212,7 @@ public class PlayerService {
 		}
 	}
 	
-	public EliminatedPlayerDto getEliminatedPlayer(String lobbyId) {
+	public EliminatedPlayerDto getEliminatedPlayer(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			Player eliminatedPlayer = getPlayerById(lobbyId, lobby.getEliminatedPlayerId());
@@ -200,7 +225,7 @@ public class PlayerService {
 		}
 	}
 	
-	public AiPlayerDto getAiPlayer(String lobbyId) {
+	public AiPlayerDto getAiPlayer(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			if (lobby.getPhase() != LobbyPhase.WIN && lobby.getPhase() != LobbyPhase.LOSE) {
@@ -211,5 +236,7 @@ public class PlayerService {
 			return new AiPlayerDto(aiPlayer.getName(), aiPlayer.getAvatar());
 		}
 	}
+	
+	
 	
 }

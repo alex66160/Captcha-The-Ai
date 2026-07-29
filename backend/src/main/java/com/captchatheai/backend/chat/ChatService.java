@@ -59,7 +59,7 @@ public class ChatService {
 	 * @param playerId the player that sent the chat message
 	 * @param message the chat message that was sent
 	 */
-	public void sendChatMessage(String lobbyId, UUID playerId, String message) {
+	public void sendChatMessage(int lobbyId, UUID playerId, String message) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			Player player = playerService.getPlayerById(lobbyId, playerId);
@@ -103,7 +103,7 @@ public class ChatService {
 	}
 	
 	
-	public void deleteChatHistory(String lobbyId) {
+	public void deleteChatHistory(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			lobby.getChatHistory().clear();

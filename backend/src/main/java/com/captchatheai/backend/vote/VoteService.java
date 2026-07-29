@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.stereotype.Service;
 
@@ -32,7 +33,7 @@ public class VoteService {
 	
 	private final PlayerService playerService;
 	
-	public VotesDto getVotes(String lobbyId) {
+	public VotesDto getVotes(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			if (lobby.getPhase() != LobbyPhase.REVEAL) {
@@ -62,7 +63,7 @@ public class VoteService {
 		
 	}
 	
-	public TiedPlayersDto getTiedPlayers(String lobbyId) {
+	public TiedPlayersDto getTiedPlayers(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			if (lobby.getPhase() != LobbyPhase.REVEAL_TIE) {
@@ -84,7 +85,7 @@ public class VoteService {
 	}
 	
 	
-	public void sendVote(String lobbyId, UUID voterId, UUID voteTargetId) {
+	public void sendVote(int lobbyId, UUID voterId, UUID voteTargetId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			
@@ -121,7 +122,7 @@ public class VoteService {
 
 	}
 	
-	public void calculateVotes (String lobbyId) {
+	public void calculateVotes (int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			
@@ -144,8 +145,8 @@ public class VoteService {
 			if (tiedPlayerIds.size() == 1) {
 				lobby.setEliminatedPlayerId(tiedPlayerIds.getFirst());
 			} else {
-				Random random = new Random();
-				lobby.setEliminatedPlayerId(tiedPlayerIds.get(random.nextInt(tiedPlayerIds.size())));
+				
+				lobby.setEliminatedPlayerId(tiedPlayerIds.get(ThreadLocalRandom.current().nextInt(tiedPlayerIds.size())));
 			}
 			
 			
@@ -155,7 +156,7 @@ public class VoteService {
 		}
 	}
 	
-	public void clearVotes(String lobbyId) {
+	public void clearVotes(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			lobby.getVoteTargetByVoter().clear();
