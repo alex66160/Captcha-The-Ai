@@ -12,6 +12,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import com.captchatheai.backend.answer.AnswerService;
+import com.captchatheai.backend.handler.PhaseExpiredHandler;
 import com.captchatheai.backend.lobby.exception.IncorrectLobbyPasswordException;
 import com.captchatheai.backend.lobby.exception.LobbyFullException;
 import com.captchatheai.backend.lobby.exception.LobbyNotFoundException;
@@ -19,6 +21,7 @@ import com.captchatheai.backend.player.Player;
 import com.captchatheai.backend.player.PlayerService;
 import com.captchatheai.backend.player.exception.PlayerNotFoundException;
 import com.captchatheai.backend.question.QuestionService;
+import com.captchatheai.backend.vote.VoteService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -32,14 +35,52 @@ public class LobbyService {
 	/** The lobby repository to use */
 	private final LobbyRepository lobbyRepository;
 	
-	
+	private final PhaseExpiredHandler phaseExpiredHandler;
 	private final PlayerService playerService;
 	
 	private final QuestionService questionService;
+	private final AnswerService answerService;
+	private final VoteService voteService;
 	private final SimpMessagingTemplate messagingTemplate;
 	
 
 	private final static int MAX_PLAYERS = 8;
+	
+	private final static int INTERMISSION_DURATION = 600;
+	
+	private final static int STARTING_DURATION = 30;
+	
+	private final static int INTRO_DURATION = 10;
+	
+	private final static int QUESTION_START_DURATION = 5;
+	
+	private final static int QUESTION_DURATION = 30;
+	
+	private final static int QUESTION_DISCONNECT_DURATION = 30;
+	
+	private final static int QUESTION_EMPTY_DURATION = 30;
+	
+	private final static int ANSWER_START_DURATION = 30;
+	
+	private final static int ANSWER_DURATION = 30;
+	
+	private final static int DISCUSS_START_DURATION = 30;
+	
+	private final static int DISCUSS_DURATION = 30;
+	
+	private final static int VOTING_DURATION = 30;
+	
+	private final static int VOTING_RESTART_DURATION = 30;
+	
+	private final static int REVEAL_START_DURATION = 30;
+	
+	private final static int REVEAL_DURATION = 30;
+	
+	private final static int REVEAL_TIE_DURATION = 30;
+	
+	private final static int REVEAL_END_DURATION = 30;
+	
+	private final static int GAME_RESULT_DURATION = 10;
 	
 	
 	
@@ -137,13 +178,15 @@ public class LobbyService {
 	}
 	public void createLobby(String sessionId, String password) {
 		while (true) {
-			int lobbyId = ThreadLocalRandom.current().nextInt(100000, 1000000);
-			Lobby lobby = new Lobby(lobbyId, password);
+			Lobby lobby = new Lobby(password);
 			synchronized(lobby) {
 				if (lobbyRepository.create(lobby)) {
-					Player aiPlayer = playerService.addPlayer(lobbyId, null);
+					
+					transitionToPhase(lobby.getId(), LobbyPhase.INTERMISSION);
+					
+					Player aiPlayer = playerService.addPlayer(lobby.getId(), null);
 					lobby.setAiPlayerId(aiPlayer.getId());
-					playerService.addPlayer(lobbyId, sessionId);
+					playerService.addPlayer(lobby.getId(), sessionId);
 					messagingTemplate.convertAndSend("/queue/join/" + sessionId, new LobbyIdDto(lobby.getId()));
 					break;
 				}
@@ -155,124 +198,146 @@ public class LobbyService {
 
 	
 	public void deleteLobby(int id) {
-		lobbyRepository.deleteById(id);
+		Lobby lobby = getLobbyById(id);
+		synchronized(lobby) {
+			lobbyRepository.deleteById(id);
+		}
 		
 	}
    
+	
+	public void prepareLobbyForNextGame(int id) {
+		Lobby lobby = getLobbyById(id);
+		synchronized(lobby) {
+			voteService.clearVotes(id);
+			questionService.deleteQuestion(id);
+			answerService.deleteAnswers(id);
+			lobby.setQuestionWriterId(null);
+			lobby.setEliminatedPlayerId(null);
+			lobby.getChatHistory().clear();
+			lobby.getGameHistory().clear();
+			lobby.setGameStartTime(null);
+			lobby.setRoundCount(1);
+		}
+	}
+	
+	public void prepareLobbyForNextRound(int id) {
+		
+		Lobby lobby = getLobbyById(id);
+		synchronized(lobby) {
+			voteService.clearVotes(id);
+			questionService.deleteQuestion(id);
+			answerService.deleteAnswers(id);
+			
+			lobby.setRoundCount(lobby.getRoundCount() + 1);
+		}
+		
+
+	}
+	
 	
 	public void advancePhase(int id) {
 		Lobby lobby = getLobbyById(id);
 		synchronized(lobby) {
 			switch(lobby.getPhase()) {
 				
-				case INTERMISSION -> {
-					
-					lobby.getPlayerIds().stream().filter((playerId) -> !playerId.equals(lobby.getAiPlayerId()))
-					.forEach((playerId) -> playerService.kickPlayer(lobby.getId(), playerId));
-					
-					deleteLobby(lobby.getId());
-					
-				}
+				case INTERMISSION -> phaseExpiredHandler.handleIntermissionExpired(id);
 				
-				case STARTING -> {
-					lobby.setGameStartTime(Instant.now());
-					playerService.assignPlayerIdentities(lobby.getId());
-					lobby.setPhase(LobbyPhase.INTRO);
-					lobby.setPhaseEndTime(Instant.now().plusSeconds(10));
-					messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
-					
-					
-				}
+				case STARTING -> phaseExpiredHandler.handleStartingExpired(id);
 				
-				case INTRO -> {
-					questionService.setNextQuestionWriter(lobby.getId());
-					playerService.broadcastPlayers(id);
-					lobby.setPhase(LobbyPhase.QUESTION_START);
-					lobby.setPhaseEndTime(Instant.now().plusSeconds(5));
-					messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
-					
-					
-					
-				}
+				case INTRO -> phaseExpiredHandler.handleIntroExpired(id);
 				
-				case QUESTION_START -> {
-					lobby.setPhase(LobbyPhase.QUESTION);
-					lobby.setPhaseEndTime(Instant.now().plusSeconds(30));
-					messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
-					if (lobby.getQuestionWriterId().equals(lobby.getAiPlayerId())) {
-						// call llmservice to generate question
-						
-						
-					}
-					
-				}
+				case QUESTION_START -> phaseExpiredHandler.handleQuestionStartExpired(id);
 				
-				case QUESTION -> {
-					if (lobby.getQuestion() == null && lobby.getQuestionWriterId().equals(lobby.getAiPlayerId())) {
-						lobby.setPhase(LobbyPhase.WIN);
-						lobby.setPhaseEndTime(Instant.now().plusSeconds(10));
-						messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
-						
-						
-					} else if (lobby.getQuestion() == null && !lobby.getQuestionWriterId().equals(lobby.getAiPlayerId())) {
-						lobby.setEliminatedPlayerId(lobby.getQuestionWriterId());
-						questionService.setNextQuestionWriter(id);
-						playerService.kickPlayer(id, lobby.getEliminatedPlayerId());
-						lobby.setPhase(LobbyPhase.QUESTION_EMPTY);
-						lobby.setPhaseEndTime(Instant.now().plusSeconds(5));
-						messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
-					} else {
-					
-						lobby.setPhase(LobbyPhase.ANSWER_START);
-						lobby.setPhaseEndTime(Instant.now().plusSeconds(5));
-						messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
-					}
-					
-				}
+				case QUESTION -> phaseExpiredHandler.handleQuestionExpired(id);
 				
-				case QUESTION_DISCONNECT -> {
-					lobby.setPhase(LobbyPhase.QUESTION);
-					lobby.setPhaseEndTime(Instant.now().plusSeconds(30));
-					messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
-					
-				}
+				case QUESTION_DISCONNECT -> phaseExpiredHandler.handleQuestionDisconnectExpired(id);
 				
-				case QUESTION_EMPTY -> {
-					lobby.setPhase(LobbyPhase.QUESTION);
-					lobby.setPhaseEndTime(Instant.now().plusSeconds(30));
-					messagingTemplate.convertAndSend("/topic/lobby/" + lobby.getId() + "/info", getLobbyInfo(lobby.getId()));
-					
-				}
+				case QUESTION_EMPTY -> phaseExpiredHandler.handleQuestionEmptyExpired(id);
 				
-				case ANSWER_START -> System.out.println();
+				case ANSWER_START -> phaseExpiredHandler.handleAnswerStartExpired(id);
 				
-				case ANSWER -> System.out.println();
+				case ANSWER -> phaseExpiredHandler.handleAnswerExpired(id);
 				
-				case DISCUSS_START -> System.out.println();
+				case DISCUSS_START -> phaseExpiredHandler.handleDiscussStartExpired(id);
 				
-				case DISCUSS -> System.out.println();
+				case DISCUSS -> phaseExpiredHandler.handleDiscussExpired(id);
 				
-				case VOTING -> System.out.println();
+				case VOTING -> phaseExpiredHandler.handleVotingExpired(id);
 				
-				case VOTING_RESTART -> System.out.println();
+				case VOTING_RESTART -> phaseExpiredHandler.handleVotingRestartExpired(id);
 				
-				case REVEAL_START -> System.out.println();
+				case REVEAL_START -> phaseExpiredHandler.handleRevealStartExpired(id);
 				
-				case REVEAL -> System.out.println();
+				case REVEAL -> phaseExpiredHandler.handleRevealExpired(id);
 				
-				case REVEAL_TIE -> System.out.println();
+				case REVEAL_TIE -> phaseExpiredHandler.handleRevealTieExpired(id);
 				
-				case REVEAL_END -> System.out.println();
+				case REVEAL_END -> phaseExpiredHandler.handleRevealEndExpired(id);
 				
-				case WIN -> System.out.println();
+				case AI_PLAYER_WON -> phaseExpiredHandler.handleGameResultExpired(id);
 				
-				case LOSE -> System.out.println();
+				case AI_PLAYER_FAILED_TO_RESPOND -> phaseExpiredHandler.handleGameResultExpired(id);
 				
-				case LOBBY_SHUTDOWN -> System.out.println();
+				case HUMAN_PLAYERS_WON -> phaseExpiredHandler.handleGameResultExpired(id);
+				
+				case NOT_ENOUGH_PLAYERS -> phaseExpiredHandler.handleGameResultExpired(id);
 				
 			}
 		
 		
+		}
+	}
+	
+	public void transitionToPhase(int id, LobbyPhase phase) {
+		Lobby lobby = getLobbyById(id);
+		synchronized(lobby) {
+			lobby.setPhase(phase);
+			switch(phase) {
+				case INTERMISSION -> lobby.setPhaseEndTime(Instant.now().plusSeconds(INTERMISSION_DURATION));
+				
+				case STARTING -> lobby.setPhaseEndTime(Instant.now().plusSeconds(STARTING_DURATION));
+				
+				case INTRO -> lobby.setPhaseEndTime(Instant.now().plusSeconds(INTRO_DURATION));
+				
+				case QUESTION_START -> lobby.setPhaseEndTime(Instant.now().plusSeconds(QUESTION_START_DURATION));
+				
+				case QUESTION -> lobby.setPhaseEndTime(Instant.now().plusSeconds(QUESTION_DURATION));
+				
+				case QUESTION_DISCONNECT -> lobby.setPhaseEndTime(Instant.now().plusSeconds(QUESTION_DISCONNECT_DURATION));
+				
+				case QUESTION_EMPTY -> lobby.setPhaseEndTime(Instant.now().plusSeconds(QUESTION_EMPTY_DURATION));
+				
+				case ANSWER_START -> lobby.setPhaseEndTime(Instant.now().plusSeconds(ANSWER_START_DURATION));
+				
+				case ANSWER -> lobby.setPhaseEndTime(Instant.now().plusSeconds(ANSWER_DURATION));
+				
+				case DISCUSS_START -> lobby.setPhaseEndTime(Instant.now().plusSeconds(DISCUSS_START_DURATION));
+				
+				case DISCUSS -> lobby.setPhaseEndTime(Instant.now().plusSeconds(DISCUSS_DURATION));
+				
+				case VOTING -> lobby.setPhaseEndTime(Instant.now().plusSeconds(VOTING_DURATION));
+				
+				case VOTING_RESTART -> lobby.setPhaseEndTime(Instant.now().plusSeconds(VOTING_RESTART_DURATION));
+				
+				case REVEAL_START -> lobby.setPhaseEndTime(Instant.now().plusSeconds(REVEAL_START_DURATION));
+				
+				case REVEAL -> lobby.setPhaseEndTime(Instant.now().plusSeconds(REVEAL_DURATION));
+				
+				case REVEAL_TIE -> lobby.setPhaseEndTime(Instant.now().plusSeconds(REVEAL_TIE_DURATION));
+				
+				case REVEAL_END -> lobby.setPhaseEndTime(Instant.now().plusSeconds(REVEAL_END_DURATION));
+				
+				case AI_PLAYER_WON, AI_PLAYER_FAILED_TO_RESPOND, HUMAN_PLAYERS_WON, NOT_ENOUGH_PLAYERS -> 
+				lobby.setPhaseEndTime(Instant.now().plusSeconds(GAME_RESULT_DURATION));
+
+			
+			
+			
+			
+			
+			}
+			messagingTemplate.convertAndSend("/topic/lobby/" + id + "/info", getLobbyInfo(id));			
 		}
 	}
  

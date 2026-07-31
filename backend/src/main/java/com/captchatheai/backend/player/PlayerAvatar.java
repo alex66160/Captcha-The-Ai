@@ -23,7 +23,7 @@ public enum PlayerAvatar {
 	OCTOPUS("Octopus"),
 	CRAB("Crab"),
 	SPECTATOR("Spectator"),
-	WAITING("Waiting");
+	HIDDEN("Hidden");
 	
 	private final String name;
 	

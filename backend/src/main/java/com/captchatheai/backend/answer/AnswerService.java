@@ -64,7 +64,7 @@ private final LobbyService lobbyService;
 				throw new CannotAnswerException();
 			}
 			
-			if (lobby.getAnswersById().containsKey(playerId)) {
+			if (lobby.getAnswersById().containsKey(playerId) ) {
 				throw new AnswerAlreadyWrittenException();
 			}
 			

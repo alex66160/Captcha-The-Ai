@@ -1,7 +1,7 @@
 package com.captchatheai.backend.player;
 
 public enum PlayerState {
-	WAITING,
+	HIDDEN,
 	ALIVE,
 	SPECTATOR,
 	DISCONNECTED;
