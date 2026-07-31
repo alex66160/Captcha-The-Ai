@@ -71,7 +71,7 @@ public class QuestionService {
 			
 			lobby.setQuestionWriterId(newQuestionWriterId);
 			
-			
+			playerService.broadcastPlayers(lobbyId);
 		}
 	}
 	

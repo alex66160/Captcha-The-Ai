@@ -15,6 +15,8 @@ import com.captchatheai.backend.lobby.Lobby;
 import com.captchatheai.backend.lobby.LobbyPhase;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
+import com.captchatheai.backend.player.PlayerService;
+import com.captchatheai.backend.player.PlayerState;
 import com.captchatheai.backend.question.exception.QuestionNotAvailableException;
 
 import lombok.RequiredArgsConstructor;
@@ -23,9 +25,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AnswerService {
 
-private final LobbyService lobbyService;
+	private final LobbyService lobbyService;
 	
-
+	
+	private final PlayerService playerService;
 
 
 	public AnswersDto getAnswers(int lobbyId) {
@@ -72,18 +75,9 @@ private final LobbyService lobbyService;
 			
 			lobby.getAnswersById().put(playerId, answer);
 			
-			// if everyone answered end phase early
-			
-			// need to iterate through the list of players to check
-			// if anyone didnt answer and kick them (time based not here, sinceits event based)
-			
-			//generate an answer for the ai player (async)
-			// add ai players answer to the answerList
-			
-			
-			// by
-			// setting phase to discuss_start phase
-			// and set time to now + 30 seconds
+			if (lobby.getAnswersById().size() == lobby.getPlayerIds().stream().filter((playerIdFromLobby) -> playerService.getPlayerById(lobbyId, playerIdFromLobby).getState() == PlayerState.ALIVE).count()) {
+				lobbyService.transitionToPhase(lobbyId, LobbyPhase.DISCUSS_START);
+			}
 			
 		}
 	}

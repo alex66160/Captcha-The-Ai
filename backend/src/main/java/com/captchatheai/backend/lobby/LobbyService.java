@@ -46,41 +46,41 @@ public class LobbyService {
 
 	private final static int MAX_PLAYERS = 8;
 	
-	private final static int INTERMISSION_DURATION = 600;
+	public final static int INTERMISSION_DURATION = 600;
 	
-	private final static int STARTING_DURATION = 30;
+	public final static int STARTING_DURATION = 30;
 	
-	private final static int INTRO_DURATION = 10;
+	public final static int INTRO_DURATION = 10;
 	
-	private final static int QUESTION_START_DURATION = 5;
+	public final static int QUESTION_START_DURATION = 3;
 	
-	private final static int QUESTION_DURATION = 30;
+	public final static int QUESTION_DURATION = 30;
 	
-	private final static int QUESTION_DISCONNECT_DURATION = 30;
+	public final static int QUESTION_DISCONNECT_DURATION = 30;
 	
-	private final static int QUESTION_EMPTY_DURATION = 30;
+	public final static int QUESTION_EMPTY_DURATION = 30;
 	
-	private final static int ANSWER_START_DURATION = 30;
+	public final static int ANSWER_START_DURATION = 30;
 	
-	private final static int ANSWER_DURATION = 30;
+	public final static int ANSWER_DURATION = 30;
 	
-	private final static int DISCUSS_START_DURATION = 30;
+	public final static int DISCUSS_START_DURATION = 30;
 	
-	private final static int DISCUSS_DURATION = 30;
+	public final static int DISCUSS_DURATION = 30;
 	
-	private final static int VOTING_DURATION = 30;
+	public final static int VOTING_DURATION = 30;
 	
-	private final static int VOTING_RESTART_DURATION = 30;
+	public final static int VOTING_RESTART_DURATION = 30;
 	
-	private final static int REVEAL_START_DURATION = 30;
+	public final static int REVEAL_START_DURATION = 30;
 	
-	private final static int REVEAL_DURATION = 30;
+	public final static int REVEAL_DURATION = 30;
 	
-	private final static int REVEAL_TIE_DURATION = 30;
+	public final static int REVEAL_TIE_DURATION = 30;
 	
-	private final static int REVEAL_END_DURATION = 30;
+	public final static int REVEAL_END_DURATION = 30;
 	
-	private final static int GAME_RESULT_DURATION = 10;
+	public final static int GAME_RESULT_DURATION = 10;
 	
 	
 	
@@ -212,6 +212,8 @@ public class LobbyService {
 			voteService.clearVotes(id);
 			questionService.deleteQuestion(id);
 			answerService.deleteAnswers(id);
+			playerService.clearPlayerIdentities(id);
+			playerService.removeDisconnectedPlayers(id);
 			lobby.setQuestionWriterId(null);
 			lobby.setEliminatedPlayerId(null);
 			lobby.getChatHistory().clear();

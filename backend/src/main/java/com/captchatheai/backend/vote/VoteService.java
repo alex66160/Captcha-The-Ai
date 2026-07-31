@@ -113,11 +113,11 @@ public class VoteService {
 			
 			voteTargetByVoter.put(voterId, voteTargetId);
 			votersByVoteTarget.computeIfAbsent(voteTargetId, (key) -> new ArrayList<>()).add(voterId);
-//			if (votersByVoteTarget.get(voteTargetId) == null) {
-//				votersByVoteTarget.put(voteTargetId, new HashSet<>());
-//				
-//			}
-//			votersByVoteTarget.get(voteTargetId).add(voterId);
+
+			if (voteTargetByVoter.size() == lobby.getPlayerIds().stream().filter((playerId) -> playerService.getPlayerById(lobbyId, playerId).getState() == PlayerState.ALIVE).count()) {
+				lobbyService.transitionToPhase(lobbyId, LobbyPhase.REVEAL_START);
+			}
+			
 		}
 
 	}

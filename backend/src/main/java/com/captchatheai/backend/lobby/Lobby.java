@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.captchatheai.backend.ai.ScheduledAiEvent;
 import com.captchatheai.backend.chat.ChatMessage;
 import com.captchatheai.backend.player.Player;
 
@@ -70,6 +71,9 @@ public class Lobby {
 	private final Deque<ChatMessage> chatHistory = new ArrayDeque<>();
 	
 	private final List<String> gameHistory = new ArrayList<>();
+	
+	private ScheduledAiEvent scheduledAiEvent; 
+	
 	
 	private LobbyPhase phase;
 	private Instant phaseEndTime;
