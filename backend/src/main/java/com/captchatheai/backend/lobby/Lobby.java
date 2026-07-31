@@ -14,8 +14,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 
-
+import com.captchatheai.backend.ai.ScheduledAiEvent;
 import com.captchatheai.backend.chat.ChatMessage;
 import com.captchatheai.backend.player.Player;
 
@@ -34,7 +35,7 @@ import lombok.Setter;
 @RequiredArgsConstructor
 public class Lobby {
 	
-	private final int id;
+	private final int id = ThreadLocalRandom.current().nextInt(100000, 1000000);
 	
 	private final String password;
 	
@@ -71,8 +72,11 @@ public class Lobby {
 	
 	private final List<String> gameHistory = new ArrayList<>();
 	
-	private LobbyPhase phase = LobbyPhase.INTERMISSION;
-	private Instant phaseEndTime = Instant.now().plusSeconds(600);
+	private ScheduledAiEvent scheduledAiEvent; 
+	
+	
+	private LobbyPhase phase;
+	private Instant phaseEndTime;
 	
 	private Instant gameStartTime;
 	private int roundCount = 1;

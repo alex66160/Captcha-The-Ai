@@ -64,7 +64,7 @@ public class ChatService {
 		synchronized (lobby) {
 			Player player = playerService.getPlayerById(lobbyId, playerId);
 			PlayerState playerState = player.getState();
-			if (playerState == PlayerState.DISCONNECTED || playerState == PlayerState.WAITING 
+			if (playerState == PlayerState.DISCONNECTED || playerState == PlayerState.HIDDEN 
 					|| lobby.getPhase() == LobbyPhase.INTERMISSION || lobby.getPhase() == LobbyPhase.STARTING) {
 				throw new CannotChatException();
 			}

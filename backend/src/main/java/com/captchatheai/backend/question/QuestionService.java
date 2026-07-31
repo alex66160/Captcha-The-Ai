@@ -54,23 +54,24 @@ public class QuestionService {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			List<UUID> playersById = lobby.getPlayerIds();
+			
 			UUID oldQuestionWriterId = lobby.getQuestionWriterId();
 			
 		
 		
 			
-			int idx = playersById.indexOf(oldQuestionWriterId);
+			int index = oldQuestionWriterId == null ? -1 : playersById.indexOf(oldQuestionWriterId);
 			
 			
-			UUID newQuestionWriterId = playersById.get((++idx) % playersById.size());
+			UUID newQuestionWriterId = playersById.get((++index) % playersById.size());
 			while (playerService.getPlayerById(lobbyId, newQuestionWriterId).getState() != PlayerState.ALIVE) {
-				newQuestionWriterId = playersById.get((++idx) % playersById.size());
+				newQuestionWriterId = playersById.get((++index) % playersById.size());
 			}
 			
 			
 			lobby.setQuestionWriterId(newQuestionWriterId);
 			
-			
+			playerService.broadcastPlayers(lobbyId);
 		}
 	}
 	
@@ -86,7 +87,7 @@ public class QuestionService {
 				throw new NotQuestionWriterException();
 			}
 			
-			if (lobby.getQuestion() != null) {
+			if (lobby.getQuestion() != null ) {
 				throw new QuestionAlreadyWrittenException();
 			}
 			
@@ -94,12 +95,17 @@ public class QuestionService {
 		}
 	}
 	
+
+	
+	
 	public void deleteQuestion(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			lobby.setQuestion(null);
 		}
 	}
+	
+
 	
 	
 	

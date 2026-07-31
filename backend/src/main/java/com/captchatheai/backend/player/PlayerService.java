@@ -2,14 +2,19 @@ package com.captchatheai.backend.player;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import com.captchatheai.backend.lobby.Lobby;
 import com.captchatheai.backend.lobby.LobbyInfoDto;
@@ -20,6 +25,7 @@ import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.exception.AiPlayerAccessDeniedException;
 import com.captchatheai.backend.player.exception.PlayerDisconnectedException;
 import com.captchatheai.backend.player.exception.PlayerNotFoundException;
+import com.captchatheai.backend.question.QuestionService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,10 +33,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PlayerService {
 	
-	
+	private final Map<String, Integer> lobbyIdByPlayerSessionId = new HashMap<>();
 	private final LobbyService lobbyService;
 
-	
+	private final QuestionService questionService;
 	private final SimpMessagingTemplate messagingTemplate;
 	public Player getPlayerById(int lobbyId, UUID playerId) {
 		Player player = lobbyService.getLobbyById(lobbyId).getPlayersById().get(playerId);
@@ -100,11 +106,11 @@ public class PlayerService {
 			PlayerAvatar playerAvatar;
 			PlayerState playerState;
 			if (lobby.getPhase() == LobbyPhase.INTERMISSION || lobby.getPhase() == LobbyPhase.STARTING) {
-				playerName = "WAITING";
-				playerAvatar = PlayerAvatar.WAITING;
-				playerState = PlayerState.WAITING;
+				playerName = PlayerAvatar.HIDDEN.getName();
+				playerAvatar = PlayerAvatar.HIDDEN;
+				playerState = PlayerState.HIDDEN;
 			} else {
-				playerName = "SPECTATOR";
+				playerName = PlayerAvatar.SPECTATOR.getName();
 				playerAvatar = PlayerAvatar.SPECTATOR;
 				playerState = PlayerState.SPECTATOR;
 			}
@@ -117,6 +123,7 @@ public class PlayerService {
 			Map<String, UUID> playerIdsBySessionId = lobby.getPlayerIdsBySessionId();
 			players.add(player.getId());
 			playersById.put(player.getId(), player);
+			lobbyIdByPlayerSessionId.put(sessionId, lobbyId);
 			
 			// the ai player will have a null sessionid, so dont add it to the map.
 			if (sessionId != null) {
@@ -127,11 +134,7 @@ public class PlayerService {
 			broadcastPlayers(lobbyId);
 			
 			if (lobby.getPhase() == LobbyPhase.INTERMISSION && players.size() == 3) {
-				lobby.setPhase(LobbyPhase.STARTING);
-				lobby.setPhaseEndTime(Instant.now().plusSeconds(30));
-				// broadcast that we are in the starting phase.
-				//messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId + "/phase", new LobbyInfoDto(lobby.getPhase()));
-				
+				lobbyService.transitionToPhase(lobbyId, LobbyPhase.STARTING);
 			}
 			
 			return player;
@@ -141,19 +144,29 @@ public class PlayerService {
 	public Player removePlayer(int lobbyId, UUID playerId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
+			
+			
+			if (lobby.getPhase() == LobbyPhase.QUESTION && playerId.equals(lobby.getQuestionWriterId())) {
+				lobby.setEliminatedPlayerId(playerId);
+				questionService.setNextQuestionWriter(lobbyId);
+				
+				lobbyService.transitionToPhase(lobbyId, LobbyPhase.QUESTION_DISCONNECT);
+			}
+			
+			
 			Player player = getPlayerById(lobbyId, playerId);
 			PlayerState playerState = player.getState();
 			
 			if (playerState == PlayerState.DISCONNECTED) {
 				throw new PlayerDisconnectedException();
 			}
-			List<UUID> players = lobby.getPlayerIds();
+			List<UUID> playerIds = lobby.getPlayerIds();
 			Map<UUID, Player> playersById = lobby.getPlayersById();
 			Map<String, UUID> playerIdsBySessionId = lobby.getPlayerIdsBySessionId();
 			
-			players.remove(playerId);
-			
-			if (playerState == PlayerState.WAITING || playerState == PlayerState.SPECTATOR) {
+			playerIds.remove(playerId);
+			lobbyIdByPlayerSessionId.remove(player.getSessionId());
+			if (playerState == PlayerState.HIDDEN || playerState == PlayerState.SPECTATOR) {
 				playersById.remove(playerId);
 				playerIdsBySessionId.remove(player.getSessionId());
 			}
@@ -166,10 +179,24 @@ public class PlayerService {
 			
 			broadcastPlayers(lobbyId);
 			
-			if (lobby.getPhase() == LobbyPhase.STARTING && players.size() == 2) {
-				lobby.setPhase(LobbyPhase.INTERMISSION);
-				lobby.setPhaseEndTime(Instant.now());
+			
+			if (lobby.getPhase() != LobbyPhase.INTERMISSION && lobby.getPhase() != LobbyPhase.STARTING && lobby.getPhase() != LobbyPhase.REVEAL_END && 
+					lobby.getPlayerIds().stream().filter((playerIdFromLobby) -> getPlayerById(lobbyId, playerIdFromLobby).getState() == PlayerState.ALIVE).count() == 2) {
+				lobbyService.transitionToPhase(lobbyId, LobbyPhase.NOT_ENOUGH_PLAYERS);
 			}
+			
+			if (lobby.getPhase() == LobbyPhase.STARTING && playerIds.size() == 2) {
+				lobbyService.transitionToPhase(lobbyId, LobbyPhase.INTERMISSION);
+			}
+			
+			if (lobby.getPhase() == LobbyPhase.VOTING && player.getState() == PlayerState.ALIVE) {
+				lobby.setEliminatedPlayerId(playerId);
+				lobbyService.transitionToPhase(lobbyId, LobbyPhase.VOTING_RESTART);
+
+			}
+			
+			
+			
 			return player;
 		}
 		
@@ -185,12 +212,28 @@ public class PlayerService {
 		
 	}
 	
+	public void setPlayerAsSpectator(int lobbyId, UUID playerId) {
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized(lobby) {
+			Player player = getPlayerById(lobbyId, playerId);
+			player.setAvatar(PlayerAvatar.SPECTATOR);
+			player.setName(PlayerAvatar.SPECTATOR.getName());
+			player.setState(PlayerState.SPECTATOR);
+			broadcastPlayers(lobbyId);
+		}
+	}
+	
+	
 	public void assignPlayerIdentities (int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 			List<UUID> playerIds = lobby.getPlayerIds();
-			List<PlayerAvatar> validAvatars = Arrays.stream(PlayerAvatar.values())
-					.filter((playerAvatar) -> playerAvatar != PlayerAvatar.WAITING && playerAvatar != PlayerAvatar.SPECTATOR).toList();
+			
+			
+			Collections.shuffle(playerIds);
+			
+			List<PlayerAvatar> validAvatars = new ArrayList<>(Arrays.stream(PlayerAvatar.values())
+					.filter((playerAvatar) -> playerAvatar != PlayerAvatar.HIDDEN && playerAvatar != PlayerAvatar.SPECTATOR).toList());
 			
 			Collections.shuffle(validAvatars);
 			Map<String, UUID> playerIdsByName = lobby.getPlayerIdsByName();
@@ -212,6 +255,56 @@ public class PlayerService {
 		}
 	}
 	
+	public void clearPlayerIdentities(int lobbyId) {
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized(lobby) {
+
+			
+			List<UUID> playerIds = lobby.getPlayerIds();
+
+			
+			for (UUID playerId : playerIds) {
+				Player player = getPlayerById(lobbyId, playerId);
+				player.setName(PlayerAvatar.HIDDEN.getName());
+				player.setAvatar(PlayerAvatar.HIDDEN);
+				player.setState(PlayerState.HIDDEN);
+						
+			}
+			
+			broadcastPlayers(lobbyId);
+			
+			
+			
+		}
+	}
+	
+	public void removeDisconnectedPlayers(int lobbyId) {
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		synchronized(lobby) {
+
+			
+			Map<UUID, Player> playersById = lobby.getPlayersById();
+			Map<String, UUID> playerIdsBySessionId = lobby.getPlayerIdsBySessionId();
+
+			List<String> disconnectedSessionIds = playerIdsBySessionId.keySet().stream().filter((sessionId) -> {
+				
+				Player player = playersById.get(playerIdsBySessionId.get(sessionId));
+				return player.getState() == PlayerState.DISCONNECTED;
+				
+				}).toList();
+			
+	
+			disconnectedSessionIds.stream().forEach((sessionId) -> {
+				
+				UUID removedPlayerId = playerIdsBySessionId.remove(sessionId);
+				playersById.remove(removedPlayerId);
+				
+			});
+			
+			
+		}
+	}
+	
 	public EliminatedPlayerDto getEliminatedPlayer(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
@@ -228,12 +321,22 @@ public class PlayerService {
 	public AiPlayerDto getAiPlayer(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
-			if (lobby.getPhase() != LobbyPhase.WIN && lobby.getPhase() != LobbyPhase.LOSE) {
+			if (lobby.getPhase() != LobbyPhase.AI_PLAYER_WON && lobby.getPhase() != LobbyPhase.AI_PLAYER_FAILED_TO_RESPOND && lobby.getPhase() != LobbyPhase.HUMAN_PLAYERS_WON && lobby.getPhase() != LobbyPhase.NOT_ENOUGH_PLAYERS) {
 				throw new AiPlayerAccessDeniedException();
 			}
 			
 			Player aiPlayer = getPlayerById(lobbyId, lobby.getAiPlayerId());
 			return new AiPlayerDto(aiPlayer.getName(), aiPlayer.getAvatar());
+		}
+	}
+	
+	@EventListener
+	public void playerDisconnectListener(SessionDisconnectEvent sessionDisconnectEvent) {
+		StompHeaderAccessor accessor = StompHeaderAccessor.wrap(sessionDisconnectEvent.getMessage());
+		String sessionId = accessor.getSessionId();
+		if (lobbyIdByPlayerSessionId.containsKey(sessionId)) {
+			int lobbyId = lobbyIdByPlayerSessionId.get(sessionId);
+			removePlayer(lobbyId, getPlayerIdBySessionId(lobbyId, sessionId));
 		}
 	}
 	
