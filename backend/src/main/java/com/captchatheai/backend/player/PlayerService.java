@@ -68,7 +68,7 @@ public class PlayerService {
 	public PlayersDto getPlayers(int lobbyId, UUID playerId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		
-		List<UUID> playerIds = lobby.getPlayerIds();
+		List<UUID> playerIds = lobby.getPlayerIds().stream().filter((playerIdFromLobby) -> getPlayerById(lobbyId, playerIdFromLobby).getState() != PlayerState.DISCONNECTED).toList();
 		
 		List<PlayerDto> players = playerIds.stream().map((playerIdFromPlayerIds) -> {
 			Player player = getPlayerById(lobbyId, playerIdFromPlayerIds);
@@ -133,7 +133,7 @@ public class PlayerService {
 			
 			broadcastPlayers(lobbyId);
 			
-			if (lobby.getPhase() == LobbyPhase.INTERMISSION && players.size() == 3) {
+			if (lobby.getPhase() == LobbyPhase.INTERMISSION && lobby.getPlayerCount() == 3) {
 				lobbyService.transitionToPhase(lobbyId, LobbyPhase.STARTING);
 			}
 			
@@ -146,12 +146,7 @@ public class PlayerService {
 		synchronized(lobby) {
 			
 			
-			if (lobby.getPhase() == LobbyPhase.QUESTION && playerId.equals(lobby.getQuestionWriterId())) {
-				lobby.setEliminatedPlayerId(playerId);
-				questionService.setNextQuestionWriter(lobbyId);
-				
-				lobbyService.transitionToPhase(lobbyId, LobbyPhase.QUESTION_DISCONNECT);
-			}
+		
 			
 			
 			Player player = getPlayerById(lobbyId, playerId);
@@ -164,9 +159,11 @@ public class PlayerService {
 			Map<UUID, Player> playersById = lobby.getPlayersById();
 			Map<String, UUID> playerIdsBySessionId = lobby.getPlayerIdsBySessionId();
 			
-			playerIds.remove(playerId);
 			lobbyIdByPlayerSessionId.remove(player.getSessionId());
+		
+			
 			if (playerState == PlayerState.HIDDEN || playerState == PlayerState.SPECTATOR) {
+				playerIds.remove(playerId);
 				playersById.remove(playerId);
 				playerIdsBySessionId.remove(player.getSessionId());
 			}
@@ -181,8 +178,15 @@ public class PlayerService {
 			
 			
 			if (lobby.getPhase() != LobbyPhase.INTERMISSION && lobby.getPhase() != LobbyPhase.STARTING && lobby.getPhase() != LobbyPhase.REVEAL_END && 
-					lobby.getPlayerIds().stream().filter((playerIdFromLobby) -> getPlayerById(lobbyId, playerIdFromLobby).getState() == PlayerState.ALIVE).count() == 2) {
+					lobby.getAlivePlayerCount() == 2) {
 				lobbyService.transitionToPhase(lobbyId, LobbyPhase.NOT_ENOUGH_PLAYERS);
+			}
+			
+			if (lobby.getPhase() == LobbyPhase.QUESTION && playerId.equals(lobby.getQuestionWriterId())) {
+				lobby.setEliminatedPlayerId(playerId);
+				questionService.setNextQuestionWriter(lobbyId);
+				
+				lobbyService.transitionToPhase(lobbyId, LobbyPhase.QUESTION_DISCONNECT);
 			}
 			
 			if (lobby.getPhase() == LobbyPhase.STARTING && playerIds.size() == 2) {
@@ -227,7 +231,7 @@ public class PlayerService {
 	public void assignPlayerIdentities (int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
-			List<UUID> playerIds = lobby.getPlayerIds();
+			List<UUID> playerIds = lobby.getPlayersById().entrySet().stream().filter((entry) -> entry.getValue().getState() != PlayerState.DISCONNECTED).map((entry) -> entry.getKey()).toList();
 			
 			
 			Collections.shuffle(playerIds);
@@ -260,9 +264,9 @@ public class PlayerService {
 		synchronized(lobby) {
 
 			
-			List<UUID> playerIds = lobby.getPlayerIds();
+			List<UUID> playerIds = lobby.getPlayersById().entrySet().stream().filter((entry) -> entry.getValue().getState() != PlayerState.DISCONNECTED).map((entry) -> entry.getKey()).toList();
 
-			
+			lobby.getPlayerIdsByName().clear();
 			for (UUID playerId : playerIds) {
 				Player player = getPlayerById(lobbyId, playerId);
 				player.setName(PlayerAvatar.HIDDEN.getName());
@@ -282,7 +286,7 @@ public class PlayerService {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized(lobby) {
 
-			
+			List<UUID> playerIds = lobby.getPlayerIds();
 			Map<UUID, Player> playersById = lobby.getPlayersById();
 			Map<String, UUID> playerIdsBySessionId = lobby.getPlayerIdsBySessionId();
 
@@ -297,7 +301,9 @@ public class PlayerService {
 			disconnectedSessionIds.stream().forEach((sessionId) -> {
 				
 				UUID removedPlayerId = playerIdsBySessionId.remove(sessionId);
+				playerIds.remove(removedPlayerId);
 				playersById.remove(removedPlayerId);
+			
 				
 			});
 			

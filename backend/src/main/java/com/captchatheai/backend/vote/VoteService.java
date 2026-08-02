@@ -114,7 +114,7 @@ public class VoteService {
 			voteTargetByVoter.put(voterId, voteTargetId);
 			votersByVoteTarget.computeIfAbsent(voteTargetId, (key) -> new ArrayList<>()).add(voterId);
 
-			if (voteTargetByVoter.size() == lobby.getPlayerIds().stream().filter((playerId) -> playerService.getPlayerById(lobbyId, playerId).getState() == PlayerState.ALIVE).count()) {
+			if (voteTargetByVoter.size() == lobby.getAlivePlayerCount()) {
 				lobbyService.transitionToPhase(lobbyId, LobbyPhase.REVEAL_START);
 			}
 			

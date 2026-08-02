@@ -3,6 +3,9 @@ package com.captchatheai.backend;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+/**
+ * Starting point of the backend.
+ */
 @SpringBootApplication
 public class BackendApplication {
 

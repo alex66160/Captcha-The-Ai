@@ -19,7 +19,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import com.captchatheai.backend.ai.ScheduledAiEvent;
 import com.captchatheai.backend.chat.ChatMessage;
 import com.captchatheai.backend.player.Player;
-
+import com.captchatheai.backend.player.PlayerState;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -79,5 +79,15 @@ public class Lobby {
 	private Instant phaseEndTime;
 	
 	private Instant gameStartTime;
+	
+	
 	private int roundCount = 1;
+	
+	public int getPlayerCount() {
+		return (int) playersById.values().stream().filter((player) -> player.getState() != PlayerState.DISCONNECTED).count();
+	}
+	
+	public int getAlivePlayerCount() {
+		return (int) playersById.values().stream().filter((player) -> player.getState() == PlayerState.ALIVE).count();
+	}
 }

@@ -101,7 +101,7 @@ public class LobbyService {
 	public void joinLobby(String sessionId) {
 		while (true) {
 			// first check if a lobby exists that isnt full and is a public lobby
-			List<Lobby> lobbiesToJoin = lobbyRepository.findAll().stream().filter((lobby) -> lobby.getPlayerIds().size() <= MAX_PLAYERS && lobby.getPassword() == null).toList();
+			List<Lobby> lobbiesToJoin = lobbyRepository.findAll().stream().filter((lobby) -> lobby.getPlayerCount() <= MAX_PLAYERS && lobby.getPassword() == null).toList();
 			Lobby lobbyToJoin;
 			// if no avaiable lobbies exist, just make a new one.
 			if (lobbiesToJoin.isEmpty()) {
@@ -124,7 +124,7 @@ public class LobbyService {
 			}
 			
 			synchronized(lobbyToJoin) {
-				if (lobbyToJoin.getPlayerIds().size() >= MAX_PLAYERS) {
+				if (lobbyToJoin.getPlayerCount() >= MAX_PLAYERS) {
 					// retry if the max players is violated by the time we tried to sync.
 					continue;
 				}
@@ -155,7 +155,7 @@ public class LobbyService {
 			
 			
 			
-			if (lobby.getPlayerIds().size() >= MAX_PLAYERS) {
+			if (lobby.getPlayerCount() >= MAX_PLAYERS) {
 				throw new LobbyFullException();
 			}
 			

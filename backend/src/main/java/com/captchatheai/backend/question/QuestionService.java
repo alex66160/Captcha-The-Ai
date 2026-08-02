@@ -55,12 +55,11 @@ public class QuestionService {
 		synchronized(lobby) {
 			List<UUID> playersById = lobby.getPlayerIds();
 			
-			UUID oldQuestionWriterId = lobby.getQuestionWriterId();
 			
 		
 		
 			
-			int index = oldQuestionWriterId == null ? -1 : playersById.indexOf(oldQuestionWriterId);
+			int index = playersById.indexOf(lobby.getQuestionWriterId());
 			
 			
 			UUID newQuestionWriterId = playersById.get((++index) % playersById.size());

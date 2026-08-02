@@ -1,6 +1,6 @@
 package com.captchatheai.backend.answer.exception;
 
-public class CannotAnswerException extends RuntimeException {
+public class SendAnswerDeniedException extends RuntimeException {
 
 	/**
 	 * 
