@@ -239,7 +239,7 @@ public class PhaseExpiredHandler {
 				return;
 			}
 			
-			if (lobby.getPlayerIds().stream().filter((playerId) -> playerService.getPlayerById(lobbyId, playerId).getState() == PlayerState.ALIVE).count() <= 2) {
+			if (lobby.getAlivePlayerCount() <= 2) {
 				lobbyService.transitionToPhase(lobbyId, LobbyPhase.AI_PLAYER_WON);
 				return;
 			}

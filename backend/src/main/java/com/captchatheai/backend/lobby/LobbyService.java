@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import com.captchatheai.backend.answer.AnswerService;
 import com.captchatheai.backend.handler.PhaseExpiredHandler;
 import com.captchatheai.backend.lobby.exception.IncorrectLobbyPasswordException;
+import com.captchatheai.backend.lobby.exception.LobbyErrorType;
+import com.captchatheai.backend.lobby.exception.LobbyErrorTypeDto;
 import com.captchatheai.backend.lobby.exception.LobbyFullException;
 import com.captchatheai.backend.lobby.exception.LobbyNotFoundException;
 import com.captchatheai.backend.player.Player;
@@ -144,18 +146,27 @@ public class LobbyService {
 	
 	
 	public void joinLobbyById(int id, String sessionId, String password) {
+		Lobby lobby;
+		try {
+			lobby = getLobbyById(id);
+	
 		
+		} catch (LobbyNotFoundException e) {
+			messagingTemplate.convertAndSend("/queue/error/" + sessionId, new LobbyErrorTypeDto(LobbyErrorType.LOBBY_NOT_FOUND));
+			throw e;
+		}
 		
-		Lobby lobby = getLobbyById(id);
 		synchronized(lobby) {
 			
 			if (lobby.getPassword() != null && !lobby.getPassword().equals(password)) {
+				messagingTemplate.convertAndSend("/queue/error/" + sessionId, new LobbyErrorTypeDto(LobbyErrorType.LOBBY_INCORRECT_PASSWORD));
 				throw new IncorrectLobbyPasswordException();
 			}
 			
 			
 			
 			if (lobby.getPlayerCount() >= MAX_PLAYERS) {
+				messagingTemplate.convertAndSend("/queue/error/" + sessionId, new LobbyErrorTypeDto(LobbyErrorType.LOBBY_FULL));
 				throw new LobbyFullException();
 			}
 			
@@ -165,17 +176,16 @@ public class LobbyService {
 			
 			
 		}
-		
 	}
 	
 	
-	public void leaveLobby(int id, UUID playerId) {
-		Lobby lobby = getLobbyById(id);
-		synchronized(lobby) {
-			playerService.removePlayer(id, playerId);
-		}
-		
-	}
+//	public void leaveLobby(int id, UUID playerId) {
+//		Lobby lobby = getLobbyById(id);
+//		synchronized(lobby) {
+//			playerService.removePlayer(id, playerId);
+//		}
+//		
+//	}
 	public void createLobby(String sessionId, String password) {
 		while (true) {
 			Lobby lobby = new Lobby(password);

@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -33,7 +34,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PlayerService {
 	
-	private final Map<String, Integer> lobbyIdByPlayerSessionId = new HashMap<>();
+	private final Map<String, Integer> lobbyIdByPlayerSessionId = new ConcurrentHashMap<>();
 	private final LobbyService lobbyService;
 
 	private final QuestionService questionService;
@@ -340,9 +341,17 @@ public class PlayerService {
 	public void playerDisconnectListener(SessionDisconnectEvent sessionDisconnectEvent) {
 		StompHeaderAccessor accessor = StompHeaderAccessor.wrap(sessionDisconnectEvent.getMessage());
 		String sessionId = accessor.getSessionId();
+		
+		
+		
 		if (lobbyIdByPlayerSessionId.containsKey(sessionId)) {
-			int lobbyId = lobbyIdByPlayerSessionId.get(sessionId);
-			removePlayer(lobbyId, getPlayerIdBySessionId(lobbyId, sessionId));
+			Lobby lobby = lobbyService.getLobbyById(lobbyIdByPlayerSessionId.get(sessionId));
+			synchronized(lobby) {
+
+				if (lobby.getPlayerIdsBySessionId().containsKey(sessionId)) {
+					removePlayer(lobby.getId(), getPlayerIdBySessionId(lobby.getId(), sessionId));
+				}
+			}
 		}
 	}
 	
