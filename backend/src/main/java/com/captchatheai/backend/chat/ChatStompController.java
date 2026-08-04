@@ -31,7 +31,7 @@ public class ChatStompController {
 	 * @param sendChatMessageCommand the command that includes the players chat
 	 *                               message
 	 */
-	@MessageMapping("/lobbies/{lobbyId}/chat")
+	@MessageMapping("/lobbies/{lobbyId}/sendChat")
 	public void sendChatMessage(@DestinationVariable int lobbyId, StompHeaderAccessor accessor,
 			SendChatMessageCommand sendChatMessageCommand) {
 		String sessionId = accessor.getSessionId();
