@@ -90,7 +90,9 @@ public class QuestionService {
 			}
 
 			lobby.setQuestionWriterId(newQuestionWriterId);
-
+			log.info(
+					"Lobby Id: {}, Lobby Round: {}. New Question Writer Id: {}, New question writer was successfully set.",
+					lobbyId, lobby.getRoundCount(), newQuestionWriterId);
 			playerService.broadcastPlayers(lobbyId);
 		}
 	}
