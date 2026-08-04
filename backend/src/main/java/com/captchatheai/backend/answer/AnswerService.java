@@ -34,6 +34,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class AnswerService {
 
+	/** Maximum length for a submitted answer */
+	private final static int MAX_ANSWER_LENGTH = 100;
+
 	private final LobbyService lobbyService;
 
 	private final PlayerService playerService;
@@ -47,7 +50,7 @@ public class AnswerService {
 	 * @throws GetAnswersDeniedException if the lobby is not in the DISCUSS or
 	 *                                   VOTING phase
 	 */
-	public AnswersResponseDto getAnswers(int lobbyId) {
+	public AnswersResponse getAnswers(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
@@ -62,15 +65,15 @@ public class AnswerService {
 			Map<UUID, String> answersByPlayerId = lobby.getAnswersById();
 			// Map all the current answers in the lobby as an AnswerDto and make a new list
 			// to store them.
-			List<AnswerResponseDto> answers = answersByPlayerId.entrySet().stream().map((entry) -> {
+			List<AnswerResponse> answers = answersByPlayerId.entrySet().stream().map((entry) -> {
 				Player player = lobby.getPlayersById().get(entry.getKey());
 
-				return new AnswerResponseDto(player.getName(), player.getAvatar(), entry.getValue());
+				return new AnswerResponse(player.getName(), player.getAvatar(), entry.getValue());
 
 			}).toList();
 
 			log.info("Lobby Id: {}, Lobby Round: {}, Get answers was successful.", lobbyId, lobby.getRoundCount());
-			return new AnswersResponseDto(answers);
+			return new AnswersResponse(answers);
 
 		}
 	}
@@ -123,9 +126,9 @@ public class AnswerService {
 								+ ", Send answer denied: Player already sent an answer.");
 			}
 
-			if (answer.length() > 100 || answer.isBlank()) {
-				throw new InvalidAnswerException(
-						"Lobby Id: " + lobbyId + ", Player Id: " + playerId + ", Invalid answer was sent.");
+			if (answer == null || answer.length() > MAX_ANSWER_LENGTH || answer.isBlank()) {
+				throw new InvalidAnswerException("Lobby Id: " + lobbyId + ", Player Id: " + playerId
+						+ ", Send answer denied: Answer is over " + MAX_ANSWER_LENGTH + " characters or is blank.");
 			}
 
 			lobby.getAnswersById().put(playerId, answer);
@@ -153,8 +156,8 @@ public class AnswerService {
 	public void deleteAnswers(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
-			log.info("Lobby Id: {}, Lobby Round: {}, Answers were deleted.", lobbyId, lobby.getRoundCount());
 			lobby.getAnswersById().clear();
+			log.info("Lobby Id: {}, Lobby Round: {}, Answers were deleted.", lobbyId, lobby.getRoundCount());
 		}
 	}
 

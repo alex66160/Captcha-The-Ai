@@ -10,6 +10,9 @@ import com.captchatheai.backend.answer.exception.GetAnswersDeniedException;
 import com.captchatheai.backend.answer.exception.InvalidAnswerException;
 import com.captchatheai.backend.answer.exception.NotAnswerPhaseException;
 import com.captchatheai.backend.answer.exception.SendAnswerDeniedException;
+import com.captchatheai.backend.chat.exception.CannotChatException;
+import com.captchatheai.backend.chat.exception.ChatCooldownException;
+import com.captchatheai.backend.chat.exception.InvalidChatMessageException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,7 +27,8 @@ public class GlobalExceptionHandler {
 
 	@MessageExceptionHandler({ NotAnswerPhaseException.class, SendAnswerDeniedException.class,
 			CannotAnswerAsQuestionWriterException.class, AnswerAlreadyWrittenException.class,
-			InvalidAnswerException.class })
+			InvalidAnswerException.class, CannotChatException.class, ChatCooldownException.class,
+			InvalidChatMessageException.class })
 	public void handleStompException(RuntimeException e) {
 		log.warn(e.getMessage());
 	}
