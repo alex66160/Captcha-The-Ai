@@ -1,6 +1,6 @@
 package com.captchatheai.backend.question.exception;
 
-public class QuestionNotAvailableException extends RuntimeException {
+public class GetQuestionDeniedException extends RuntimeException {
 
 	/**
 	 * 

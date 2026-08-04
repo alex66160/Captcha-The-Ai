@@ -1,8 +1,8 @@
 package com.captchatheai.backend.ai;
 
 /**
- * The AiEvent enum class represents all the possible events that need to be ran
- * for the ai player during a game.
+ * The AiEvent enum represents all the possible events that can be ran for an Ai
+ * player during a game.
  * 
  * @author Alex Liu
  */

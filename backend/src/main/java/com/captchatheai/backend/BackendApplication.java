@@ -4,7 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Starting point of the backend.
+ * Starting point for the backend.
+ * 
+ * @author Alex Liu
  */
 @SpringBootApplication
 public class BackendApplication {

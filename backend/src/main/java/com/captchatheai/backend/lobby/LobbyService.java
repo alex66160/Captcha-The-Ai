@@ -48,39 +48,39 @@ public class LobbyService {
 
 	private final static int MAX_PLAYERS = 8;
 	
-	public final static int INTERMISSION_DURATION = 600;
+	public final static int INTERMISSION_DURATION = 1200;
 	
-	public final static int STARTING_DURATION = 30;
+	public final static int STARTING_DURATION = 40;
 	
 	public final static int INTRO_DURATION = 10;
 	
 	public final static int QUESTION_START_DURATION = 3;
 	
-	public final static int QUESTION_DURATION = 30;
+	public final static int QUESTION_DURATION = 20;
 	
-	public final static int QUESTION_DISCONNECT_DURATION = 30;
+	public final static int QUESTION_DISCONNECT_DURATION = 3;
 	
-	public final static int QUESTION_EMPTY_DURATION = 30;
+	public final static int QUESTION_EMPTY_DURATION = 3;
 	
-	public final static int ANSWER_START_DURATION = 30;
+	public final static int ANSWER_START_DURATION = 3;
 	
-	public final static int ANSWER_DURATION = 30;
+	public final static int ANSWER_DURATION = 20;
 	
-	public final static int DISCUSS_START_DURATION = 30;
+	public final static int DISCUSS_START_DURATION = 3;
 	
-	public final static int DISCUSS_DURATION = 30;
+	public final static int DISCUSS_DURATION = 20;
 	
-	public final static int VOTING_DURATION = 30;
+	public final static int VOTING_DURATION = 20;
 	
-	public final static int VOTING_RESTART_DURATION = 30;
+	public final static int VOTING_RESTART_DURATION = 3;
 	
-	public final static int REVEAL_START_DURATION = 30;
+	public final static int REVEAL_START_DURATION = 3;
 	
-	public final static int REVEAL_DURATION = 30;
+	public final static int REVEAL_DURATION = 5;
 	
-	public final static int REVEAL_TIE_DURATION = 30;
+	public final static int REVEAL_TIE_DURATION = 5;
 	
-	public final static int REVEAL_END_DURATION = 30;
+	public final static int REVEAL_END_DURATION = 5;
 	
 	public final static int GAME_RESULT_DURATION = 10;
 	
