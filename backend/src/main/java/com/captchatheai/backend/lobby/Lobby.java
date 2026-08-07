@@ -5,27 +5,19 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedDeque;
-
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
 import com.captchatheai.backend.ai.ScheduledAiEvent;
 import com.captchatheai.backend.chat.ChatMessage;
 import com.captchatheai.backend.player.Player;
-import com.captchatheai.backend.player.PlayerState;
+import com.captchatheai.backend.player.PlayerStatus;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-
 
 /**
  * Lobby object that contains players, questions, answers,
@@ -34,60 +26,49 @@ import lombok.Setter;
 @Setter
 @RequiredArgsConstructor
 public class Lobby {
-	
+
 	private final int id = ThreadLocalRandom.current().nextInt(100000, 1000000);
-	
+
 	private final String password;
-	
-	
+
 	private UUID aiPlayerId;
 	// we need to keep an ordered list of the playerids to show on the playerlist
-	
+
 	private final List<UUID> playerIds = new ArrayList<>();
 	private final Map<UUID, Player> playersById = new HashMap<>();
 	private final Map<String, UUID> playerIdsBySessionId = new HashMap<>();
 	private final Map<String, UUID> playerIdsByName = new HashMap<>();
-	
-	
-	
-	
+
 	private UUID eliminatedPlayerId;
-	
-	
-	
-	
+
 	private final List<UUID> tiedPlayerIds = new ArrayList<>();
-	
+
 	private UUID questionWriterId;
 	private String question;
 	private final Map<UUID, String> answersById = new HashMap<>();
-	
-	
+
 	private final Map<UUID, UUID> voteTargetByVoter = new HashMap<>();
 	private final Map<UUID, List<UUID>> VotersByVoteTarget = new HashMap<>();
 
-	
-	
 	private final Deque<ChatMessage> chatHistory = new ArrayDeque<>();
-	
+
 	private final List<String> gameHistory = new ArrayList<>();
-	
-	private ScheduledAiEvent scheduledAiEvent; 
-	
-	
+
+	private ScheduledAiEvent scheduledAiEvent;
+
 	private LobbyPhase phase;
 	private Instant phaseEndTime;
-	
+
 	private Instant gameStartTime;
-	
-	
+
 	private int roundCount = 1;
-	
+
 	public int getPlayerCount() {
-		return (int) playersById.values().stream().filter((player) -> player.getState() != PlayerState.DISCONNECTED).count();
+		return (int) playersById.values().stream().filter((player) -> player.getStatus() != PlayerStatus.DISCONNECTED)
+				.count();
 	}
-	
+
 	public int getAlivePlayerCount() {
-		return (int) playersById.values().stream().filter((player) -> player.getState() == PlayerState.ALIVE).count();
+		return (int) playersById.values().stream().filter((player) -> player.getStatus() == PlayerStatus.ALIVE).count();
 	}
 }

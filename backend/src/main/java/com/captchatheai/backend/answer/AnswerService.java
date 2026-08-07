@@ -17,7 +17,7 @@ import com.captchatheai.backend.lobby.LobbyPhase;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
 import com.captchatheai.backend.player.PlayerService;
-import com.captchatheai.backend.player.PlayerState;
+import com.captchatheai.backend.player.PlayerStatus;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -106,11 +106,11 @@ public class AnswerService {
 						+ ", Send answer denied: Lobby was not in the answer phase.");
 			}
 
-			PlayerState playerState = playerService.getPlayerById(lobbyId, playerId).getState();
-			if (playerState != PlayerState.ALIVE) {
+			PlayerStatus playerStatus = playerService.getPlayerById(lobbyId, playerId).getStatus();
+			if (playerStatus != PlayerStatus.ALIVE) {
 
 				throw new SendAnswerDeniedException("Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount()
-						+ ", Player State: " + playerState + ", Player Id: " + playerId
+						+ ", Player State: " + playerStatus + ", Player Id: " + playerId
 						+ ", Send answer denied: player was not in the alive state.");
 			}
 
@@ -141,7 +141,7 @@ public class AnswerService {
 			if (lobby.getAnswersById().size() == lobby.getAlivePlayerCount() - 1) {
 				log.info("Lobby Id: {}, Lobby Round: {}, Players submitted all answers early.", lobbyId,
 						lobby.getRoundCount());
-				lobbyService.transitionToPhase(lobbyId, LobbyPhase.DISCUSS_START);
+				lobbyService.transitionToPhase(lobbyId, LobbyPhase.DISCUSS_ANNOUNCEMENT);
 			}
 
 		}

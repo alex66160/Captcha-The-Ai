@@ -16,7 +16,7 @@ import com.captchatheai.backend.lobby.LobbyPhase;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
 import com.captchatheai.backend.player.PlayerService;
-import com.captchatheai.backend.player.PlayerState;
+import com.captchatheai.backend.player.PlayerStatus;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -69,11 +69,11 @@ public class ChatService {
 
 			Player player = playerService.getPlayerById(lobbyId, playerId);
 
-			PlayerState playerState = player.getState();
+			PlayerStatus playerStatus = player.getStatus();
 
-			if (playerState == PlayerState.DISCONNECTED || playerState == PlayerState.HIDDEN) {
+			if (playerStatus == PlayerStatus.DISCONNECTED || playerStatus == PlayerStatus.HIDDEN) {
 				throw new CannotChatException(
-						"Lobby Id: " + lobbyId + ", Player State: " + playerState + ", Player Id: " + playerId
+						"Lobby Id: " + lobbyId + ", Player State: " + playerStatus + ", Player Id: " + playerId
 								+ ", Send Chat Denied: Player cannot chat if disconnected or hidden.");
 			}
 
@@ -101,10 +101,10 @@ public class ChatService {
 			ChatMessage chatMessage = new ChatMessage(player.getName(), message,
 					Duration.between(lobby.getGameStartTime(), Instant.now()).toSeconds());
 
-			ChatMessageSentEvent chatMessageSentEvent = new ChatMessageSentEvent(player.getName(), message);
+			SentChatMessageEvent chatMessageSentEvent = new SentChatMessageEvent(player.getName(), message);
 
 			// Only store chat messages for players that are alive.
-			if (playerState == PlayerState.ALIVE) {
+			if (playerStatus == PlayerStatus.ALIVE) {
 				if (chatHistory.size() >= MAX_CHAT_MESSAGES) {
 					chatHistory.removeFirst();
 				}
@@ -119,7 +119,7 @@ public class ChatService {
 			messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyId + "/chat/spectator", chatMessageSentEvent);
 
 			log.info("Lobby Id: {}, Player Id: {}, Player State: {}, Chat message was successfully sent out.", lobbyId,
-					playerId, playerState);
+					playerId, playerStatus);
 		}
 	}
 

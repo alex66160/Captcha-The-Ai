@@ -13,6 +13,9 @@ import com.captchatheai.backend.answer.exception.SendAnswerDeniedException;
 import com.captchatheai.backend.chat.exception.CannotChatException;
 import com.captchatheai.backend.chat.exception.ChatCooldownException;
 import com.captchatheai.backend.chat.exception.InvalidChatMessageException;
+import com.captchatheai.backend.player.exception.GetAiPlayerDeniedException;
+import com.captchatheai.backend.player.exception.PlayerDisconnectedException;
+import com.captchatheai.backend.player.exception.PlayerNotFoundException;
 import com.captchatheai.backend.question.exception.GetQuestionDeniedException;
 import com.captchatheai.backend.question.exception.InvalidQuestionException;
 import com.captchatheai.backend.question.exception.NotQuestionPhaseException;
@@ -31,7 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 public class GlobalExceptionHandler {
 
 	@ExceptionHandler({ GetAnswersDeniedException.class, GetQuestionDeniedException.class,
-			GetVotesDeniedException.class, GetTiedPlayersDeniedException.class })
+			GetVotesDeniedException.class, GetTiedPlayersDeniedException.class, PlayerNotFoundException.class,
+			GetAiPlayerDeniedException.class })
 	public void handleRestExceptions(RuntimeException e) {
 		log.warn(e.getMessage());
 	}
@@ -41,7 +45,8 @@ public class GlobalExceptionHandler {
 			InvalidAnswerException.class, CannotChatException.class, ChatCooldownException.class,
 			InvalidChatMessageException.class, NotQuestionPhaseException.class, NotQuestionWriterException.class,
 			QuestionAlreadyWrittenException.class, SendQuestionDeniedException.class, InvalidQuestionException.class,
-			VotingDeniedException.class, AlreadyVotedException.class })
+			VotingDeniedException.class, AlreadyVotedException.class, PlayerNotFoundException.class,
+			PlayerDisconnectedException.class })
 	public void handleStompException(RuntimeException e) {
 		log.warn(e.getMessage());
 	}

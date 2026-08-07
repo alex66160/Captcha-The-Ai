@@ -13,7 +13,7 @@ import com.captchatheai.backend.lobby.LobbyPhase;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
 import com.captchatheai.backend.player.PlayerService;
-import com.captchatheai.backend.player.PlayerState;
+import com.captchatheai.backend.player.PlayerStatus;
 import com.captchatheai.backend.vote.exception.AlreadyVotedException;
 import com.captchatheai.backend.vote.exception.GetTiedPlayersDeniedException;
 import com.captchatheai.backend.vote.exception.GetVotesDeniedException;
@@ -136,13 +136,13 @@ public class VoteService {
 
 			Player voteTargetPlayer = playerService.getPlayerById(lobbyId, voteTargetId);
 
-			if (voterPlayer.getState() != PlayerState.ALIVE) {
+			if (voterPlayer.getStatus() != PlayerStatus.ALIVE) {
 				throw new VotingDeniedException("Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount()
 						+ ", Voter Id: " + voterId + ", Vote Target Id: " + voteTargetId
 						+ ", Send vote denied: Player sending the vote is not alive.");
 			}
 
-			if (voteTargetPlayer.getState() != PlayerState.ALIVE) {
+			if (voteTargetPlayer.getStatus() != PlayerStatus.ALIVE) {
 				throw new VotingDeniedException("Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount()
 						+ ", Voter Id: " + voterId + ", Vote Target Id: " + voteTargetId
 						+ ", Send vote denied: Player to receive the vote is not alive.");
@@ -166,7 +166,7 @@ public class VoteService {
 			// If all players have finished voting, we can skip ahead to the next phase.
 			if (voteTargetByVoter.size() == lobby.getAlivePlayerCount()) {
 				log.info("Lobby Id: {}, Lobby Round: {}, Voting has finished early.", lobbyId, lobby.getRoundCount());
-				lobbyService.transitionToPhase(lobbyId, LobbyPhase.REVEAL_START);
+				lobbyService.transitionToPhase(lobbyId, LobbyPhase.REVEAL_ANNOUNCEMENT);
 			}
 
 		}

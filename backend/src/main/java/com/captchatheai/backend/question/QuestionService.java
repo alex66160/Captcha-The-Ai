@@ -10,7 +10,7 @@ import com.captchatheai.backend.lobby.LobbyPhase;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
 import com.captchatheai.backend.player.PlayerService;
-import com.captchatheai.backend.player.PlayerState;
+import com.captchatheai.backend.player.PlayerStatus;
 import com.captchatheai.backend.question.exception.GetQuestionDeniedException;
 import com.captchatheai.backend.question.exception.InvalidQuestionException;
 import com.captchatheai.backend.question.exception.NotQuestionPhaseException;
@@ -85,7 +85,7 @@ public class QuestionService {
 
 			// Keep looping until we find a player that is ALIVE.
 			UUID newQuestionWriterId = playerIds.get((++index) % playerIds.size());
-			while (playerService.getPlayerById(lobbyId, newQuestionWriterId).getState() != PlayerState.ALIVE) {
+			while (playerService.getPlayerById(lobbyId, newQuestionWriterId).getStatus() != PlayerStatus.ALIVE) {
 				newQuestionWriterId = playerIds.get((++index) % playerIds.size());
 			}
 
@@ -93,7 +93,7 @@ public class QuestionService {
 			log.info(
 					"Lobby Id: {}, Lobby Round: {}. New Question Writer Id: {}, New question writer was successfully set.",
 					lobbyId, lobby.getRoundCount(), newQuestionWriterId);
-			playerService.broadcastPlayers(lobbyId);
+			lobbyService.broadcastLobbyState(lobbyId);
 		}
 	}
 
@@ -122,11 +122,11 @@ public class QuestionService {
 						+ ", Send question denied: Lobby is not in QUESTION phase.");
 			}
 
-			PlayerState playerState = playerService.getPlayerById(lobbyId, playerId).getState();
-			if (playerState != PlayerState.ALIVE) {
+			PlayerStatus playerStatus = playerService.getPlayerById(lobbyId, playerId).getStatus();
+			if (playerStatus != PlayerStatus.ALIVE) {
 				throw new SendQuestionDeniedException(
 						"Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount() + "Player Id: " + playerId
-								+ "Player State: " + playerState + ", Send question denied: Player is not alive.");
+								+ "Player State: " + playerStatus + ", Send question denied: Player is not alive.");
 			}
 
 			if (!playerId.equals(lobby.getQuestionWriterId())) {
