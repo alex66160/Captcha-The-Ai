@@ -1,6 +1,5 @@
 package com.captchatheai.backend.answer;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -8,86 +7,158 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import com.captchatheai.backend.answer.exception.AnswerAlreadyWrittenException;
-import com.captchatheai.backend.answer.exception.AnswerNotAvailableException;
-import com.captchatheai.backend.answer.exception.CannotAnswerException;
+import com.captchatheai.backend.answer.exception.CannotAnswerAsQuestionWriterException;
+import com.captchatheai.backend.answer.exception.GetAnswersDeniedException;
+import com.captchatheai.backend.answer.exception.InvalidAnswerException;
 import com.captchatheai.backend.answer.exception.NotAnswerPhaseException;
+import com.captchatheai.backend.answer.exception.SendAnswerDeniedException;
 import com.captchatheai.backend.lobby.Lobby;
 import com.captchatheai.backend.lobby.LobbyPhase;
 import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
 import com.captchatheai.backend.player.PlayerService;
-import com.captchatheai.backend.player.PlayerState;
-import com.captchatheai.backend.question.exception.QuestionNotAvailableException;
+import com.captchatheai.backend.player.PlayerStatus;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+/**
+ * The AnswerService class allows players to get all the answers in a lobby and
+ * send an answer to a lobby. Also enables the deletion of all the answers in a
+ * lobby.
+ * 
+ * @author Alex Liu
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AnswerService {
 
+	/** Maximum length for a submitted answer */
+	private final static int MAX_ANSWER_LENGTH = 100;
+
 	private final LobbyService lobbyService;
-	
-	
+
 	private final PlayerService playerService;
 
-
-	public AnswersDto getAnswers(int lobbyId) {
+	/**
+	 * The getAnswers method gets all the answers in a given lobby, and returns it
+	 * as an AnswersResponseDto.
+	 * 
+	 * @param lobbyId the lobbyId to get the answers from
+	 * @return the answers in a given lobby as an AnswersResponseDto
+	 * @throws GetAnswersDeniedException if the lobby is not in the DISCUSS or
+	 *                                   VOTING phase
+	 */
+	public AnswersResponse getAnswers(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
-			if (lobby.getPhase() != LobbyPhase.DISCUSS && 
-					lobby.getPhase() != LobbyPhase.VOTING) {
-				
-				throw new AnswerNotAvailableException();
-				
+
+			if (lobby.getPhase() != LobbyPhase.DISCUSS && lobby.getPhase() != LobbyPhase.VOTING) {
+
+				throw new GetAnswersDeniedException("Lobby Id: " + lobbyId + "Lobby Round: " + lobby.getRoundCount()
+						+ ", Lobby Phase: " + lobby.getPhase()
+
+						+ ", Get answers was denied: Lobby was not in discuss or voting phase.");
 			}
+
 			Map<UUID, String> answersByPlayerId = lobby.getAnswersById();
-			
-			List<AnswerDto> answers = answersByPlayerId.entrySet().stream().map((entry) -> {
-						Player player = lobby.getPlayersById().get(entry.getKey());
-						
-						return new AnswerDto(player.getName(), player.getAvatar(), entry.getValue());
-								
-					}).toList();
-					
-			return new AnswersDto(answers);
-			
-			
+			// Map all the current answers in the lobby as an AnswerDto and make a new list
+			// to store them.
+			List<AnswerResponse> answers = answersByPlayerId.entrySet().stream().map((entry) -> {
+				Player player = lobby.getPlayersById().get(entry.getKey());
+
+				return new AnswerResponse(player.getName(), player.getAvatar(), entry.getValue());
+
+			}).toList();
+
+			log.info("Lobby Id: {}, Lobby Round: {}, Get answers was successful.", lobbyId, lobby.getRoundCount());
+			return new AnswersResponse(answers);
+
 		}
 	}
-	
+
+	/**
+	 * The sendAnswer method allows a player to send their answer to a given lobby.
+	 * 
+	 * @param lobbyId  the lobbyId to send their answer to
+	 * @param playerId the playerId of the player
+	 * @param answer   the answer that the player wants to send
+	 * @throws NotAnswerPhaseException               if player sends an answer thats
+	 *                                               not during the answer phase
+	 * @throws SendAnswerDeniedException             if the player is not alive when
+	 *                                               they send their answer
+	 * @throws CannotAnswerAsQuestionWriterException if the player sends an answer
+	 *                                               while being the question writer
+	 * @throws AnswerAlreadyWrittenException         if the player has already sent
+	 *                                               an answer in that round
+	 * @throws InvalidAnswerException                if the answer sent was over 100
+	 *                                               characters or blank.
+	 */
 	public void sendAnswer(int lobbyId, UUID playerId, String answer) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
+
 			if (lobby.getPhase() != LobbyPhase.ANSWER) {
-				throw new NotAnswerPhaseException();
+
+				throw new NotAnswerPhaseException("Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount()
+						+ ", Lobby Phase: " + lobby.getPhase() + ", Player Id: " + playerId
+						+ ", Send answer denied: Lobby was not in the answer phase.");
 			}
-			
-			
+
+			PlayerStatus playerStatus = playerService.getPlayerById(lobbyId, playerId).getStatus();
+			if (playerStatus != PlayerStatus.ALIVE) {
+
+				throw new SendAnswerDeniedException("Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount()
+						+ ", Player State: " + playerStatus + ", Player Id: " + playerId
+						+ ", Send answer denied: player was not in the alive state.");
+			}
+
 			if (lobby.getQuestionWriterId().equals(playerId)) {
-				throw new CannotAnswerException();
+				throw new CannotAnswerAsQuestionWriterException(
+						"Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount() + ", Player Id: " + playerId
+								+ ", Send answer denied: Player is the question writer.");
 			}
-			
-			if (lobby.getAnswersById().containsKey(playerId) ) {
-				throw new AnswerAlreadyWrittenException();
+
+			if (lobby.getAnswersById().containsKey(playerId)) {
+				throw new AnswerAlreadyWrittenException(
+						"Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount() + ", Player Id: " + playerId
+								+ ", Send answer denied: Player already sent an answer.");
 			}
-			
-			
-			
+
+			if (answer == null || answer.length() > MAX_ANSWER_LENGTH || answer.isBlank()) {
+				throw new InvalidAnswerException("Lobby Id: " + lobbyId + ", Player Id: " + playerId
+						+ ", Send answer denied: Answer is over " + MAX_ANSWER_LENGTH + " characters or is blank.");
+			}
+
 			lobby.getAnswersById().put(playerId, answer);
-			
-			if (lobby.getAnswersById().size() == lobby.getPlayerIds().stream().filter((playerIdFromLobby) -> playerService.getPlayerById(lobbyId, playerIdFromLobby).getState() == PlayerState.ALIVE).count()) {
-				lobbyService.transitionToPhase(lobbyId, LobbyPhase.DISCUSS_START);
+			log.info("Lobby Id: {}, Lobby Round: {}, Player Id: {}, Answer was successfully sent.", lobbyId,
+					lobby.getRoundCount(), playerId);
+
+			// If all players that are alive have answered, we need to go to the next phase
+			// immediately. Keep in mind that the question writer
+			// cannot answer their own question, so we subtract by 1.
+			if (lobby.getAnswersById().size() == lobby.getAlivePlayerCount() - 1) {
+				log.info("Lobby Id: {}, Lobby Round: {}, Players submitted all answers early.", lobbyId,
+						lobby.getRoundCount());
+				lobbyService.transitionToPhase(lobbyId, LobbyPhase.DISCUSS_ANNOUNCEMENT);
 			}
-			
+
 		}
 	}
-	
+
+	/**
+	 * The deleteAnswers method is a cleanup method to delete all the answers in a
+	 * given lobby.
+	 * 
+	 * @param lobbyId the lobbyId to delete all the answers from
+	 */
 	public void deleteAnswers(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
-		synchronized(lobby) {
+		synchronized (lobby) {
 			lobby.getAnswersById().clear();
+			log.info("Lobby Id: {}, Lobby Round: {}, Answers were deleted.", lobbyId, lobby.getRoundCount());
 		}
 	}
-	
-	
+
 }
