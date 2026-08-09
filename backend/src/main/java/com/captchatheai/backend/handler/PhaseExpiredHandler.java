@@ -62,12 +62,12 @@ public class PhaseExpiredHandler {
 		}
 	}
 
-	public void handleQuestionStartExpired(int lobbyId) {
+	public void handleQuestionAnnouncementExpired(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			if (lobby.getAiPlayerId().equals(lobby.getQuestionWriterId())) {
 				lobby.setScheduledAiEvent(new ScheduledAiEvent(AiEvent.GENERATE_QUESTION,
-						Instant.now().plusSeconds(LobbyService.QUESTION_DURATION / 2)));
+						Instant.now().plusSeconds(LobbyPhase.QUESTION.getDuration() / 2)));
 			}
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.QUESTION);
 		}
@@ -112,12 +112,12 @@ public class PhaseExpiredHandler {
 		}
 	}
 
-	public void handleAnswerStartExpired(int lobbyId) {
+	public void handleAnswerAnnouncementExpired(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			if (!lobby.getAiPlayerId().equals(lobby.getQuestionWriterId())) {
 				lobby.setScheduledAiEvent(new ScheduledAiEvent(AiEvent.GENERATE_ANSWER,
-						Instant.now().plusSeconds(LobbyService.ANSWER_DURATION / 2)));
+						Instant.now().plusSeconds(LobbyPhase.ANSWER.getDuration() / 2)));
 			}
 
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.ANSWER);
@@ -147,7 +147,7 @@ public class PhaseExpiredHandler {
 		}
 	}
 
-	public void handleDiscussStartExpired(int lobbyId) {
+	public void handleDiscussAnnouncementExpired(int lobbyId) {
 
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
@@ -161,7 +161,7 @@ public class PhaseExpiredHandler {
 		synchronized (lobby) {
 
 			lobby.setScheduledAiEvent(new ScheduledAiEvent(AiEvent.GENERATE_VOTE,
-					Instant.now().plusSeconds(LobbyService.VOTING_DURATION / 2)));
+					Instant.now().plusSeconds(LobbyPhase.VOTING.getDuration() / 2)));
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.VOTING);
 		}
 	}
@@ -191,12 +191,12 @@ public class PhaseExpiredHandler {
 		synchronized (lobby) {
 			voteService.clearVotes(lobbyId);
 			lobby.setScheduledAiEvent(new ScheduledAiEvent(AiEvent.GENERATE_VOTE,
-					Instant.now().plusSeconds(LobbyService.VOTING_DURATION / 2)));
+					Instant.now().plusSeconds(LobbyPhase.VOTING.getDuration() / 2)));
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.VOTING);
 		}
 	}
 
-	public void handleRevealStartExpired(int lobbyId) {
+	public void handleRevealAnnouncementExpired(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
@@ -228,7 +228,7 @@ public class PhaseExpiredHandler {
 		}
 	}
 
-	public void handleRevealEndExpired(int lobbyId) {
+	public void handleEliminationExpired(int lobbyId) {
 		Lobby lobby = lobbyService.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
