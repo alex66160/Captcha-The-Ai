@@ -29,7 +29,7 @@ public class QuestionStompController {
 	 * @param accessor              the header accessor to get the sessionId
 	 * @param submitQuestionRequest the request containing the question to be sent
 	 */
-	@MessageMapping("/lobbies/{lobbyId}/sendQuestion")
+	@MessageMapping("/lobbies/{lobbyId}/question")
 	public void sendQuestion(@DestinationVariable int lobbyId, StompHeaderAccessor accessor,
 			SubmitQuestionRequest submitQuestionRequest) {
 		String sessionId = accessor.getSessionId();

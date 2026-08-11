@@ -27,7 +27,7 @@ public class PlayerRestController {
 	 * @param lobbyId the lobbyId to get the ai player from
 	 * @return the ai player
 	 */
-	@GetMapping("/{lobbyId}/aiPlayer")
+	@GetMapping("/{lobbyId}/ai-player")
 	public ResponseEntity<AiPlayerResponse> getAiPlayer(@PathVariable int lobbyId) {
 		return ResponseEntity.ok(playerService.getAiPlayer(lobbyId));
 	}
@@ -39,7 +39,7 @@ public class PlayerRestController {
 	 * @param lobbyId the lobbyId to get the eliminated player from
 	 * @return the eliminated player
 	 */
-	@GetMapping("/{lobbyId}/eliminatedPlayer")
+	@GetMapping("/{lobbyId}/eliminated-player")
 	public ResponseEntity<EliminatedPlayerResponse> getEliminatedPlayer(@PathVariable int lobbyId) {
 		return ResponseEntity.ok(playerService.getEliminatedPlayer(lobbyId));
 	}

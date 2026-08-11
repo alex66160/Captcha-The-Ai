@@ -34,7 +34,7 @@ public class AnswerStompController {
 	 *                            player
 	 * @param submitAnswerRequest the request that contains the answer of the player
 	 */
-	@MessageMapping("/lobbies/{lobbyId}/sendAnswer")
+	@MessageMapping("/lobbies/{lobbyId}/answers")
 	public void sendAnswer(@DestinationVariable int lobbyId, StompHeaderAccessor accessor,
 			@Payload SubmitAnswerRequest submitAnswerRequest) {
 		String sessionId = accessor.getSessionId();

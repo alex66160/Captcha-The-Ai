@@ -32,7 +32,7 @@ public class VoteStompController {
 	 *                          voter
 	 * @param submitVoteRequest the request that contains the vote target name
 	 */
-	@MessageMapping("/lobbies/{lobbyId}/sendVote")
+	@MessageMapping("/lobbies/{lobbyId}/votes")
 	public void sendVote(@DestinationVariable int lobbyId, StompHeaderAccessor accessor,
 			SubmitVoteRequest submitVoteRequest) {
 		String sessionId = accessor.getSessionId();

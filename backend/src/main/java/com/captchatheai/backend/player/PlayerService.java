@@ -151,12 +151,19 @@ public class PlayerService {
 	 *                                 given
 	 */
 	public UUID getPlayerIdBySessionId(int lobbyId, String sessionId) {
-		UUID playerId = lobbyService.getLobbyById(lobbyId).getPlayerIdsBySessionId().get(sessionId);
-		if (playerId == null) {
-			throw new PlayerNotFoundException(
-					"Lobby Id: " + lobbyId + ", sessionId: " + sessionId + ", sessionId was not found.");
+		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		// This method is synchronized in particular since other controller classes need
+		// to convert the session id to a player id before calling their service
+		// methods.
+		synchronized (lobby) {
+			UUID playerId = lobby.getPlayerIdsBySessionId().get(sessionId);
+			if (playerId == null) {
+				throw new PlayerNotFoundException(
+						"Lobby Id: " + lobbyId + ", sessionId: " + sessionId + ", sessionId was not found.");
+			}
+			return playerId;
 		}
-		return playerId;
+
 	}
 
 	/**

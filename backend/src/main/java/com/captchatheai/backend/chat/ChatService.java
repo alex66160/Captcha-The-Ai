@@ -111,12 +111,13 @@ public class ChatService {
 				chatHistory.addLast(chatMessage);
 				// Broadcast messages that are made by alive players to the default chat, but do
 				// not broadcast messages made by spectators to the default chat.
-				messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyId + "/chat", chatMessageSentEvent);
+				messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyId + "/chat-messages", chatMessageSentEvent);
 			}
 
 			// Messages that are made by either alive players or spectators should be seen
 			// by spectators.
-			messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyId + "/chat/spectator", chatMessageSentEvent);
+			messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyId + "/spectators/chat-messages",
+					chatMessageSentEvent);
 
 			log.info("Lobby Id: {}, Player Id: {}, Player State: {}, Chat message was successfully sent out.", lobbyId,
 					playerId, playerStatus);

@@ -2,6 +2,7 @@ package com.captchatheai.backend.chat;
 
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
@@ -31,9 +32,9 @@ public class ChatStompController {
 	 * @param sendChatMessageCommand the command that includes the players chat
 	 *                               message
 	 */
-	@MessageMapping("/lobbies/{lobbyId}/sendChat")
+	@MessageMapping("/lobbies/{lobbyId}/chat-messages")
 	public void sendChatMessage(@DestinationVariable int lobbyId, StompHeaderAccessor accessor,
-			SendChatMessageCommand sendChatMessageCommand) {
+			@Payload SendChatMessageCommand sendChatMessageCommand) {
 		String sessionId = accessor.getSessionId();
 
 		chatService.sendChatMessage(lobbyId, playerService.getPlayerIdBySessionId(lobbyId, sessionId),
