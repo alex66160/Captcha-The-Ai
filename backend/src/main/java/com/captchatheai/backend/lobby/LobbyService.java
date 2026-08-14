@@ -10,6 +10,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.captchatheai.backend.ai.AiService;
+import com.captchatheai.backend.ai.ScheduledAiEvent;
 import com.captchatheai.backend.answer.AnswerService;
 import com.captchatheai.backend.handler.PhaseExpiredHandler;
 import com.captchatheai.backend.lobby.exception.IncorrectLobbyPasswordException;
@@ -33,13 +35,16 @@ import lombok.extern.slf4j.Slf4j;
  * lobbies themselves using a scheduled 0.5 second tick checker to check for
  * lobbies that need to advance phases. The actual handler code for expired
  * phases is in PhaseExpiredHandler.
+ * 
+ * @author Alex Liu
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LobbyService {
-
 	private final LobbyRepository lobbyRepository;
+
+	private final LobbyLookup lobbyLookup;
 
 	private final PhaseExpiredHandler phaseExpiredHandler;
 	private final PlayerService playerService;
@@ -47,6 +52,8 @@ public class LobbyService {
 	private final QuestionService questionService;
 	private final AnswerService answerService;
 	private final VoteService voteService;
+	private final AiService aiService;
+
 	private final SimpMessagingTemplate messagingTemplate;
 
 	/** The max players that a lobby can have */
@@ -77,23 +84,28 @@ public class LobbyService {
 					advancePhase(lobby.getId());
 				}
 
-				// add code to check if the scheduledai event is ready to execute
+				// Check if there is a scheduled Ai event, and if there is and its not
+				// processing yet and its time to execute it, set processing to true and call
+				// the respective method in aiService.
 
+				ScheduledAiEvent scheduledAiEvent = lobby.getScheduledAiEvent();
+				if (scheduledAiEvent != null && !scheduledAiEvent.isProcessing()
+						&& scheduledAiEvent.getTimeToExecute().isBefore(Instant.now())) {
+					scheduledAiEvent.setProcessing(true);
+					// Note that all the aiService methods listed below are async.
+					switch (scheduledAiEvent.getAiEvent()) {
+
+					case GENERATE_QUESTION -> aiService.generateQuestion(lobby.getId());
+
+					case GENERATE_ANSWER -> aiService.generateAnswer(lobby.getId());
+
+					case GENERATE_VOTE -> aiService.generateVote(lobby.getId());
+
+					}
+				}
 			}
 		}
 
-	}
-
-	/**
-	 * The getLobbyById method returns a lobby by its id.
-	 * 
-	 * @param lobbyId the lobby to find
-	 * @return the lobby
-	 * @throws LobbyNotFoundException if the lobby was not found
-	 */
-	public Lobby getLobbyById(int lobbyId) {
-		return lobbyRepository.findById(lobbyId)
-				.orElseThrow(() -> new LobbyNotFoundException("Lobby Id: " + lobbyId + ", Lobby was not found."));
 	}
 
 	/**
@@ -104,7 +116,7 @@ public class LobbyService {
 	 * @param sessionId the players sessionId to broadcast to
 	 */
 	public void getLobbyState(int lobbyId, String sessionId) {
-		Lobby lobby = getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 
 		UUID playerId = playerService.getPlayerIdBySessionId(lobbyId, sessionId);
 
@@ -122,7 +134,7 @@ public class LobbyService {
 	 * @param lobbyId the lobby to broadcast the lobby state of to all the players
 	 */
 	public void broadcastLobbyState(int lobbyId) {
-		Lobby lobby = getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			Map<String, UUID> playerIdsBySessionId = lobby.getPlayerIdsBySessionId();
 
@@ -201,7 +213,7 @@ public class LobbyService {
 	 * @return whether or not the lobby is password protected or not
 	 */
 	public IsLobbyPasswordProtectedResponse getIsLobbyPasswordProtected(int lobbyId) {
-		Lobby lobby = getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			return new IsLobbyPasswordProtectedResponse(lobby.getPassword() != null);
 		}
@@ -221,7 +233,7 @@ public class LobbyService {
 	public void joinLobbyById(int lobbyId, String sessionId, String password) {
 		Lobby lobby;
 		try {
-			lobby = getLobbyById(lobbyId);
+			lobby = lobbyLookup.getLobbyById(lobbyId);
 
 		} catch (LobbyNotFoundException e) {
 			messagingTemplate.convertAndSend("/queue/lobbies/errors/" + sessionId,
@@ -292,7 +304,7 @@ public class LobbyService {
 	 * @param playerId the player to leave
 	 */
 	public void leaveLobby(int lobbyId, UUID playerId) {
-		Lobby lobby = getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			playerService.removePlayer(lobbyId, playerId);
 		}
@@ -305,7 +317,7 @@ public class LobbyService {
 	 * @param lobbyId the lobby to delete
 	 */
 	public void deleteLobby(int lobbyId) {
-		Lobby lobby = getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			lobbyRepository.deleteById(lobbyId);
 		}
@@ -320,7 +332,7 @@ public class LobbyService {
 	 * @param lobbyId
 	 */
 	public void prepareLobbyForNextGame(int lobbyId) {
-		Lobby lobby = getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			voteService.clearVotes(lobbyId);
 			questionService.deleteQuestion(lobbyId);
@@ -349,7 +361,7 @@ public class LobbyService {
 	 */
 	public void prepareLobbyForNextRound(int lobbyId) {
 
-		Lobby lobby = getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			voteService.clearVotes(lobbyId);
 			questionService.deleteQuestion(lobbyId);
@@ -369,7 +381,7 @@ public class LobbyService {
 	 * @param lobbyId the lobbyId to advance the phase on
 	 */
 	public void advancePhase(int lobbyId) {
-		Lobby lobby = getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			switch (lobby.getPhase()) {
 
@@ -428,7 +440,7 @@ public class LobbyService {
 	 * @param phase   the phase to transition to
 	 */
 	public void transitionToPhase(int lobbyId, LobbyPhase phase) {
-		Lobby lobby = getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			lobby.setPhase(phase);
 			lobby.setPhaseEndTime(Instant.now().plusSeconds(phase.getDuration()));
