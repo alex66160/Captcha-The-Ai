@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -13,13 +14,13 @@ import org.springframework.stereotype.Service;
 import com.captchatheai.backend.ai.AiService;
 import com.captchatheai.backend.ai.ScheduledAiEvent;
 import com.captchatheai.backend.answer.AnswerService;
-import com.captchatheai.backend.handler.PhaseExpiredHandler;
 import com.captchatheai.backend.lobby.exception.IncorrectLobbyPasswordException;
 import com.captchatheai.backend.lobby.exception.LobbyErrorType;
 import com.captchatheai.backend.lobby.exception.LobbyErrorTypeResponse;
 import com.captchatheai.backend.lobby.exception.LobbyFullException;
 import com.captchatheai.backend.lobby.exception.LobbyNotFoundException;
 import com.captchatheai.backend.player.Player;
+import com.captchatheai.backend.player.PlayerLookup;
 import com.captchatheai.backend.player.PlayerService;
 import com.captchatheai.backend.player.PlayerStatus;
 import com.captchatheai.backend.question.QuestionService;
@@ -46,14 +47,16 @@ public class LobbyService {
 
 	private final LobbyLookup lobbyLookup;
 
-	private final PhaseExpiredHandler phaseExpiredHandler;
 	private final PlayerService playerService;
+
+	private final PlayerLookup playerLookup;
 
 	private final QuestionService questionService;
 	private final AnswerService answerService;
 	private final VoteService voteService;
 	private final AiService aiService;
 
+	private final ApplicationEventPublisher eventPublisher;
 	private final SimpMessagingTemplate messagingTemplate;
 
 	/** The max players that a lobby can have */
@@ -73,35 +76,27 @@ public class LobbyService {
 
 	/**
 	 * The lobbyRunner method is responsible for checking all the lobbies to see if
-	 * any of their phases has expired, and if any the lobbies have scheduled events
-	 * to execute.
+	 * any of their phases has expired, and if any the lobbies have scheduled ai
+	 * events to execute.
 	 */
 	@Scheduled(fixedRate = 500)
 	public void lobbyRunner() {
 		for (Lobby lobby : lobbyRepository.findAll()) {
 			synchronized (lobby) {
 				if (lobby.getPhaseEndTime().isBefore(Instant.now())) {
-					advancePhase(lobby.getId());
+					eventPublisher.publishEvent(new LobbyPhaseExpiredEvent(lobby.getId()));
 				}
 
-				// Check if there is a scheduled Ai event, and if there is and its not
-				// processing yet and its time to execute it, set processing to true and call
-				// the respective method in aiService.
-
 				ScheduledAiEvent scheduledAiEvent = lobby.getScheduledAiEvent();
+
 				if (scheduledAiEvent != null && !scheduledAiEvent.isProcessing()
 						&& scheduledAiEvent.getTimeToExecute().isBefore(Instant.now())) {
+					// We need to set processing to true here instead of in handleScheduledAiEvent
+					// as handleScheduledAiEvent is async.
 					scheduledAiEvent.setProcessing(true);
-					// Note that all the aiService methods listed below are async.
-					switch (scheduledAiEvent.getAiEvent()) {
 
-					case GENERATE_QUESTION -> aiService.generateQuestion(lobby.getId());
+					aiService.handleScheduledAiEvent(lobby.getId(), scheduledAiEvent);
 
-					case GENERATE_ANSWER -> aiService.generateAnswer(lobby.getId());
-
-					case GENERATE_VOTE -> aiService.generateVote(lobby.getId());
-
-					}
 				}
 			}
 		}
@@ -118,7 +113,7 @@ public class LobbyService {
 	public void getLobbyState(int lobbyId, String sessionId) {
 		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 
-		UUID playerId = playerService.getPlayerIdBySessionId(lobbyId, sessionId);
+		UUID playerId = playerLookup.getPlayerIdBySessionId(lobbyId, sessionId);
 
 		LobbyState lobbyState = new LobbyState(lobby.getPhase(), lobby.getPhaseEndTime(), lobby.getRoundCount(),
 				playerService.getPlayers(lobbyId, playerId));
@@ -140,7 +135,7 @@ public class LobbyService {
 
 			// Filter out disconnected player ids because they are not in the lobby anymore.
 			playerIdsBySessionId.entrySet().stream()
-					.filter((entry) -> playerService.getPlayerById(lobbyId, entry.getValue())
+					.filter((entry) -> playerLookup.getPlayerById(lobbyId, entry.getValue())
 							.getStatus() != PlayerStatus.DISCONNECTED)
 					.forEach((entry) -> getLobbyState(lobbyId, entry.getKey()));
 
@@ -339,6 +334,7 @@ public class LobbyService {
 			answerService.deleteAnswers(lobbyId);
 			playerService.clearPlayerIdentities(lobbyId);
 			playerService.removeDisconnectedPlayers(lobbyId);
+			lobby.setScheduledAiEvent(null);
 			lobby.setQuestionWriterId(null);
 			lobby.setEliminatedPlayerId(null);
 			lobby.getChatHistory().clear();
@@ -372,63 +368,6 @@ public class LobbyService {
 					lobby.getRoundCount(), lobby.getPhase());
 		}
 
-	}
-
-	/**
-	 * The advancePhase method advances the lobby to a new phase by calling the
-	 * respective handler to handle whichever phase had just expired.
-	 * 
-	 * @param lobbyId the lobbyId to advance the phase on
-	 */
-	public void advancePhase(int lobbyId) {
-		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
-		synchronized (lobby) {
-			switch (lobby.getPhase()) {
-
-			case INTERMISSION -> phaseExpiredHandler.handleIntermissionExpired(lobbyId);
-
-			case STARTING -> phaseExpiredHandler.handleStartingExpired(lobbyId);
-
-			case INTRO -> phaseExpiredHandler.handleIntroExpired(lobbyId);
-
-			case QUESTION_ANNOUNCEMENT -> phaseExpiredHandler.handleQuestionAnnouncementExpired(lobbyId);
-
-			case QUESTION -> phaseExpiredHandler.handleQuestionExpired(lobbyId);
-
-			case QUESTION_DISCONNECT -> phaseExpiredHandler.handleQuestionDisconnectExpired(lobbyId);
-
-			case QUESTION_EMPTY -> phaseExpiredHandler.handleQuestionEmptyExpired(lobbyId);
-
-			case ANSWER_ANNOUNCEMENT -> phaseExpiredHandler.handleAnswerAnnouncementExpired(lobbyId);
-
-			case ANSWER -> phaseExpiredHandler.handleAnswerExpired(lobbyId);
-
-			case DISCUSS_ANNOUNCEMENT -> phaseExpiredHandler.handleDiscussAnnouncementExpired(lobbyId);
-
-			case DISCUSS -> phaseExpiredHandler.handleDiscussExpired(lobbyId);
-
-			case VOTING -> phaseExpiredHandler.handleVotingExpired(lobbyId);
-
-			case VOTING_RESTART -> phaseExpiredHandler.handleVotingRestartExpired(lobbyId);
-
-			case REVEAL_ANNOUNCEMENT -> phaseExpiredHandler.handleRevealAnnouncementExpired(lobbyId);
-
-			case REVEAL -> phaseExpiredHandler.handleRevealExpired(lobbyId);
-
-			case REVEAL_TIE -> phaseExpiredHandler.handleRevealTieExpired(lobbyId);
-
-			case ELIMINATION -> phaseExpiredHandler.handleEliminationExpired(lobbyId);
-
-			case AI_PLAYER_WON -> phaseExpiredHandler.handleGameResultExpired(lobbyId);
-
-			case AI_PLAYER_FAILED_TO_RESPOND -> phaseExpiredHandler.handleGameResultExpired(lobbyId);
-
-			case HUMAN_PLAYERS_WON -> phaseExpiredHandler.handleGameResultExpired(lobbyId);
-
-			case NOT_ENOUGH_PLAYERS -> phaseExpiredHandler.handleGameResultExpired(lobbyId);
-
-			}
-		}
 	}
 
 	/**

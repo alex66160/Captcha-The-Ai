@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -19,7 +20,6 @@ import com.captchatheai.backend.lobby.LobbyLookup;
 import com.captchatheai.backend.lobby.LobbyPhase;
 import com.captchatheai.backend.player.exception.GetAiPlayerDeniedException;
 import com.captchatheai.backend.player.exception.PlayerDisconnectedException;
-import com.captchatheai.backend.question.QuestionService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +47,8 @@ public class PlayerService {
 
 	private final PlayerLookup playerLookup;
 
-	private final QuestionService questionService;
+	private final ApplicationEventPublisher eventPublisher;
+
 	private final SimpMessagingTemplate messagingTemplate;
 
 	/**
@@ -182,16 +183,8 @@ public class PlayerService {
 			log.info(
 					"Lobby Id: {}, Lobby Phase: {}, Lobby Round: {}, sessionId: {}, Player Id: {}, Player was successfully added.",
 					lobbyId, lobby.getPhase(), lobby.getRoundCount(), sessionId, player.getId());
-			lobbyLookup.broadcastLobbyState(lobbyId);
 
-			// If the lobby is in intermission and our player count is 3, we need to
-			// transition to the starting phase.
-			if (lobby.getPhase() == LobbyPhase.INTERMISSION && lobby.getPlayerCount() == MIN_PLAYER_COUNT) {
-				log.info("Lobby Id: {}, Lobby Phase: {}, Lobby Round: {}, Lobby has enough players, lobby has started.",
-						lobbyId, lobby.getPhase(), lobby.getRoundCount());
-				lobbyLookup.transitionToPhase(lobbyId, LobbyPhase.STARTING);
-
-			}
+			eventPublisher.publishEvent(new PlayerAddedEvent(lobbyId));
 
 			return player;
 		}
@@ -202,18 +195,17 @@ public class PlayerService {
 	 * 
 	 * @param lobbyId  the lobbyId to remove the player from
 	 * @param playerId the player to be removed
-	 * @return the player that was removed
 	 * @throws PlayerDisconnectedException if player to remove was already
 	 *                                     disconnected
 	 */
-	public Player removePlayer(int lobbyId, UUID playerId) {
+	public void removePlayer(int lobbyId, UUID playerId) {
 		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			Player player = playerLookup.getPlayerById(lobbyId, playerId);
-			PlayerStatus playerStatus = player.getStatus();
+			PlayerStatus initialPlayerStatus = player.getStatus();
 
-			if (playerStatus == PlayerStatus.DISCONNECTED) {
+			if (initialPlayerStatus == PlayerStatus.DISCONNECTED) {
 				throw new PlayerDisconnectedException("Lobby Id: " + lobbyId + "Player Id: " + playerId
 						+ ", Remove player denied, player already disconnected.");
 			}
@@ -227,7 +219,7 @@ public class PlayerService {
 			// If the player to be removed was HIDDEN or a SPECTATOR we can remove them from
 			// our maps entirely because we don't need to use any of their player info
 			// anymore.
-			if (playerStatus == PlayerStatus.HIDDEN || playerStatus == PlayerStatus.SPECTATOR) {
+			if (initialPlayerStatus == PlayerStatus.HIDDEN || initialPlayerStatus == PlayerStatus.SPECTATOR) {
 				playerIds.remove(playerId);
 				playersById.remove(playerId);
 				playerIdsBySessionId.remove(player.getSessionId());
@@ -236,63 +228,15 @@ public class PlayerService {
 			// If the player to be removed was ALIVE, set their status to DISCONNECTED to
 			// show that they are no longer apart of the lobby, but keep them in the maps so
 			// that we can use their player info later.
-			if (playerStatus == PlayerStatus.ALIVE) {
+			if (initialPlayerStatus == PlayerStatus.ALIVE) {
 				player.setStatus(PlayerStatus.DISCONNECTED);
 			}
 
 			log.info("Lobby Id: {}, Lobby Phase: {}, Lobby Round: {}, Player Id: {}, Player was successfully removed.",
 					lobbyId, lobby.getPhase(), lobby.getRoundCount(), player.getId());
-			lobbyLookup.broadcastLobbyState(lobbyId);
 
-			// If the game has already started and too many players have left, go to the not
-			// enough players phase.
-			if (lobby.getPhase() != LobbyPhase.INTERMISSION && lobby.getPhase() != LobbyPhase.STARTING
-					&& lobby.getPhase() != LobbyPhase.ELIMINATION && lobby.getPhase() != LobbyPhase.AI_PLAYER_WON
-					&& lobby.getPhase() != LobbyPhase.AI_PLAYER_FAILED_TO_RESPOND
-					&& lobby.getPhase() != LobbyPhase.HUMAN_PLAYERS_WON
-					&& lobby.getPhase() != LobbyPhase.NOT_ENOUGH_PLAYERS
-					&& lobby.getAlivePlayerCount() == END_GAME_EARLY_PLAYER_COUNT) {
-				log.info("Lobby Id: {}, Lobby Phase: {}, Lobby Round: {}, Too many players left after game started.",
-						lobbyId, lobby.getPhase(), lobby.getRoundCount(), player.getId());
-				lobbyLookup.transitionToPhase(lobbyId, LobbyPhase.NOT_ENOUGH_PLAYERS);
-				return player;
-			}
+			eventPublisher.publishEvent(new PlayerRemovedEvent(lobbyId, playerId, initialPlayerStatus));
 
-			// If the player that left was the question writer, choose another question
-			// writer.
-			if (lobby.getPhase() == LobbyPhase.QUESTION && playerId.equals(lobby.getQuestionWriterId())) {
-				lobby.setEliminatedPlayerId(playerId);
-				questionService.setNextQuestionWriter(lobbyId);
-				log.info(
-						"Lobby Id: {}, Lobby Phase: {}, Lobby Round: {}, Player Id: {}, Question writer left during the question phase.",
-						lobbyId, lobby.getPhase(), lobby.getRoundCount());
-				lobbyLookup.transitionToPhase(lobbyId, LobbyPhase.QUESTION_DISCONNECT);
-				return player;
-			}
-
-			// If the lobby phase is STARTING and the amount of players is less than 3, go
-			// back to intermission.
-			if (lobby.getPhase() == LobbyPhase.STARTING && lobby.getPlayerCount() < MIN_PLAYER_COUNT) {
-				log.info(
-						"Lobby Id: {}, Lobby Phase: {}, Lobby Round: {}, Too many players left while the game was in the process of starting.",
-						lobbyId, lobby.getPhase(), lobby.getRoundCount());
-				lobbyLookup.transitionToPhase(lobbyId, LobbyPhase.INTERMISSION);
-				return player;
-			}
-
-			// If a player left during the voting phase and that player was alive, we need
-			// to restart the voting phase.
-			if (lobby.getPhase() == LobbyPhase.VOTING && playerStatus == PlayerStatus.ALIVE) {
-				lobby.setEliminatedPlayerId(playerId);
-				log.info(
-						"Lobby Id: {}, Lobby Phase: {}, Lobby Round: {}, Player Id: {}, Alive player left during voting phase, restarting vote phase.",
-						lobbyId, lobby.getPhase(), lobby.getRoundCount(), player.getId());
-				lobbyLookup.transitionToPhase(lobbyId, LobbyPhase.VOTING_RESTART);
-				return player;
-
-			}
-
-			return player;
 		}
 
 	}
@@ -306,8 +250,9 @@ public class PlayerService {
 	public void kickPlayer(int lobbyId, UUID playerId) {
 		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
-			Player player = removePlayer(lobbyId, playerId);
-			messagingTemplate.convertAndSend("/queue/lobbies/" + lobbyId + "/disconnect/" + player.getSessionId());
+			String sessionId = playerLookup.getPlayerById(lobbyId, playerId).getSessionId();
+			removePlayer(lobbyId, playerId);
+			messagingTemplate.convertAndSend("/queue/lobbies/" + lobbyId + "/disconnect/" + sessionId);
 			log.info("Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Player Id: {}, Player has been kicked.", lobbyId,
 					lobby.getRoundCount(), lobby.getPhase(), playerId);
 		}
@@ -328,7 +273,6 @@ public class PlayerService {
 			player.setAvatar(PlayerAvatar.SPECTATOR);
 			player.setName(PlayerAvatar.SPECTATOR.getName());
 			player.setStatus(PlayerStatus.SPECTATOR);
-			lobbyLookup.broadcastLobbyState(lobbyId);
 			log.info("Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Player Id: {}, Player has been set as spectator.",
 					lobbyId, lobby.getRoundCount(), lobby.getPhase(), playerId);
 		}
@@ -370,7 +314,6 @@ public class PlayerService {
 				playerIdsByName.put(player.getName(), player.getId());
 			}
 
-			lobbyLookup.broadcastLobbyState(lobbyId);
 			log.info("Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Player identities have been assigned.", lobbyId,
 					lobby.getRoundCount(), lobby.getPhase());
 
@@ -404,7 +347,6 @@ public class PlayerService {
 
 			}
 
-			lobbyLookup.broadcastLobbyState(lobbyId);
 			log.info("Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Player identities have been cleared.", lobbyId,
 					lobby.getRoundCount(), lobby.getPhase());
 
@@ -445,15 +387,15 @@ public class PlayerService {
 	}
 
 	/**
-	 * The playerDisconnectListener is a method that listens to player disconnects,
-	 * for example if a player closes a tab or refreshes, that player has basically
-	 * left that lobby and we need to remove them from that lobby.
+	 * The handleSessionDisconnectEvent is a method that listens to player
+	 * disconnects, for example if a player closes a tab or refreshes, that player
+	 * has basically left that lobby and we need to remove them from that lobby.
 	 * 
 	 * @param sessionDisconnectEvent the sessionDisconnectEvent that was sent from
 	 *                               the disconnect
 	 */
 	@EventListener
-	public void playerDisconnectListener(SessionDisconnectEvent sessionDisconnectEvent) {
+	public void handleSessionDisconnectEvent(SessionDisconnectEvent sessionDisconnectEvent) {
 		StompHeaderAccessor accessor = StompHeaderAccessor.wrap(sessionDisconnectEvent.getMessage());
 		String sessionId = accessor.getSessionId();
 		// Since we do not exactly know why the disconnect event happened, we need if

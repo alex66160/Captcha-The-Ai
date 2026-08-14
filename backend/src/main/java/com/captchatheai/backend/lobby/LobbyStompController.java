@@ -8,7 +8,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
-import com.captchatheai.backend.player.PlayerService;
+import com.captchatheai.backend.player.PlayerLookup;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class LobbyStompController {
 
 	private final LobbyService lobbyService;
-	private final PlayerService playerService;
+	private final PlayerLookup playerLookup;
 
 	/**
 	 * The getLobbyState endpoint sends out the lobby state of a given lobby to a
@@ -83,7 +83,7 @@ public class LobbyStompController {
 	@MessageMapping("/lobbies/{lobbyId}/leave")
 	public void leaveLobby(@DestinationVariable int lobbyId, StompHeaderAccessor accessor) {
 		String sessionId = accessor.getSessionId();
-		UUID playerId = playerService.getPlayerIdBySessionId(lobbyId, sessionId);
+		UUID playerId = playerLookup.getPlayerIdBySessionId(lobbyId, sessionId);
 
 		lobbyService.leaveLobby(lobbyId, playerId);
 	}

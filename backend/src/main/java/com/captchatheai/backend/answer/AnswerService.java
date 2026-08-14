@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import com.captchatheai.backend.answer.exception.AnswerAlreadyWrittenException;
@@ -13,10 +14,10 @@ import com.captchatheai.backend.answer.exception.InvalidAnswerException;
 import com.captchatheai.backend.answer.exception.NotAnswerPhaseException;
 import com.captchatheai.backend.answer.exception.SendAnswerDeniedException;
 import com.captchatheai.backend.lobby.Lobby;
+import com.captchatheai.backend.lobby.LobbyLookup;
 import com.captchatheai.backend.lobby.LobbyPhase;
-import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
-import com.captchatheai.backend.player.PlayerService;
+import com.captchatheai.backend.player.PlayerLookup;
 import com.captchatheai.backend.player.PlayerStatus;
 
 import lombok.RequiredArgsConstructor;
@@ -37,9 +38,11 @@ public class AnswerService {
 	/** Maximum length for a submitted answer */
 	private final static int MAX_ANSWER_LENGTH = 100;
 
-	private final LobbyService lobbyService;
+	private final LobbyLookup lobbyLookup;
 
-	private final PlayerService playerService;
+	private final PlayerLookup playerLookup;
+
+	private final ApplicationEventPublisher eventPublisher;
 
 	/**
 	 * The getAnswers method gets all the answers in a given lobby, and returns it
@@ -51,7 +54,7 @@ public class AnswerService {
 	 *                                   VOTING phase
 	 */
 	public AnswersResponse getAnswers(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			if (lobby.getPhase() != LobbyPhase.DISCUSS && lobby.getPhase() != LobbyPhase.VOTING) {
@@ -96,7 +99,7 @@ public class AnswerService {
 	 *                                               characters or blank.
 	 */
 	public void sendAnswer(int lobbyId, UUID playerId, String answer) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			if (lobby.getPhase() != LobbyPhase.ANSWER) {
@@ -106,7 +109,7 @@ public class AnswerService {
 						+ ", Send answer denied: Lobby was not in the answer phase.");
 			}
 
-			PlayerStatus playerStatus = playerService.getPlayerById(lobbyId, playerId).getStatus();
+			PlayerStatus playerStatus = playerLookup.getPlayerById(lobbyId, playerId).getStatus();
 			if (playerStatus != PlayerStatus.ALIVE) {
 
 				throw new SendAnswerDeniedException("Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount()
@@ -135,14 +138,7 @@ public class AnswerService {
 			log.info("Lobby Id: {}, Lobby Round: {}, Player Id: {}, Answer was successfully sent.", lobbyId,
 					lobby.getRoundCount(), playerId);
 
-			// If all players that are alive have answered, we need to go to the next phase
-			// immediately. Keep in mind that the question writer
-			// cannot answer their own question, so we subtract by 1.
-			if (lobby.getAnswersById().size() == lobby.getAlivePlayerCount() - 1) {
-				log.info("Lobby Id: {}, Lobby Round: {}, Players submitted all answers early.", lobbyId,
-						lobby.getRoundCount());
-				lobbyService.transitionToPhase(lobbyId, LobbyPhase.DISCUSS_ANNOUNCEMENT);
-			}
+			eventPublisher.publishEvent(new SubmittedAnswerEvent(lobbyId));
 
 		}
 	}
@@ -154,7 +150,7 @@ public class AnswerService {
 	 * @param lobbyId the lobbyId to delete all the answers from
 	 */
 	public void deleteAnswers(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			lobby.getAnswersById().clear();
 			log.info("Lobby Id: {}, Lobby Round: {}, Answers were deleted.", lobbyId, lobby.getRoundCount());

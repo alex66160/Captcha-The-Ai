@@ -32,12 +32,31 @@ public class AiService {
 	private final VoteService voteService;
 
 	/**
+	 * The handleScheduledAiEvent handles an ai event, such as generating a
+	 * question, answer, or vote for the ai player.
+	 * 
+	 * @param lobbyId          the lobby that has the ai event
+	 * @param scheduledAiEvent the ai event to be handled
+	 */
+	@Async
+	public void handleScheduledAiEvent(int lobbyId, ScheduledAiEvent scheduledAiEvent) {
+		switch (scheduledAiEvent.getAiEvent()) {
+
+		case GENERATE_QUESTION -> generateQuestion(lobbyId);
+
+		case GENERATE_ANSWER -> generateAnswer(lobbyId);
+
+		case GENERATE_VOTE -> generateVote(lobbyId);
+		}
+	}
+
+	/**
 	 * The generateQuestion method will generate a question for the ai player and
 	 * call question service to submit it on behalf of the ai player.
 	 * 
 	 * @param lobbyId the lobby to generate and send the question for the ai player
 	 */
-	@Async
+
 	public void generateQuestion(int lobbyId) {
 		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		log.info("Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Began generating question for Ai Player.", lobbyId,
@@ -58,7 +77,7 @@ public class AiService {
 	 * 
 	 * @param lobbyId the lobby to generate and send the answer for the ai player
 	 */
-	@Async
+
 	public void generateAnswer(int lobbyId) {
 		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		log.info("Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Began generating answer for Ai Player.", lobbyId,
@@ -78,7 +97,7 @@ public class AiService {
 	 * 
 	 * @param lobbyId the lobby to generate and send the vote for the ai player
 	 */
-	@Async
+
 	public void generateVote(int lobbyId) {
 		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		log.info("Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Began generating vote for Ai Player.", lobbyId,

@@ -6,10 +6,10 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import com.captchatheai.backend.lobby.Lobby;
+import com.captchatheai.backend.lobby.LobbyLookup;
 import com.captchatheai.backend.lobby.LobbyPhase;
-import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
-import com.captchatheai.backend.player.PlayerService;
+import com.captchatheai.backend.player.PlayerLookup;
 import com.captchatheai.backend.player.PlayerStatus;
 import com.captchatheai.backend.question.exception.GetQuestionDeniedException;
 import com.captchatheai.backend.question.exception.InvalidQuestionException;
@@ -36,9 +36,9 @@ public class QuestionService {
 	/** Maximum length for a question */
 	private final static int MAX_QUESTION_LENGTH = 100;
 
-	private final LobbyService lobbyService;
+	private final LobbyLookup lobbyLookup;
 
-	private final PlayerService playerService;
+	private final PlayerLookup playerLookup;
 
 	/**
 	 * The getQuestion method gets the current question in a given lobby.
@@ -49,9 +49,9 @@ public class QuestionService {
 	 *                                    DISCUSS, or VOTING phase
 	 */
 	public QuestionResponse getQuestion(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
-			Player questionWriter = playerService.getPlayerById(lobbyId, lobby.getQuestionWriterId());
+			Player questionWriter = playerLookup.getPlayerById(lobbyId, lobby.getQuestionWriterId());
 			if (lobby.getPhase() != LobbyPhase.ANSWER && lobby.getPhase() != LobbyPhase.DISCUSS
 					&& lobby.getPhase() != LobbyPhase.VOTING) {
 
@@ -73,7 +73,7 @@ public class QuestionService {
 	 * @param lobbyId the lobbyId to set the question writer
 	 */
 	public void setNextQuestionWriter(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			// We call getPlayerIds (stored as an ArrayList) so that we can maintain the
 			// player ordering.
@@ -85,7 +85,7 @@ public class QuestionService {
 
 			// Keep looping until we find a player that is ALIVE.
 			UUID newQuestionWriterId = playerIds.get((++index) % playerIds.size());
-			while (playerService.getPlayerById(lobbyId, newQuestionWriterId).getStatus() != PlayerStatus.ALIVE) {
+			while (playerLookup.getPlayerById(lobbyId, newQuestionWriterId).getStatus() != PlayerStatus.ALIVE) {
 				newQuestionWriterId = playerIds.get((++index) % playerIds.size());
 			}
 
@@ -93,7 +93,7 @@ public class QuestionService {
 			log.info(
 					"Lobby Id: {}, Lobby Round: {}. New Question Writer Id: {}, New question writer was successfully set.",
 					lobbyId, lobby.getRoundCount(), newQuestionWriterId);
-			lobbyService.broadcastLobbyState(lobbyId);
+
 		}
 	}
 
@@ -114,7 +114,7 @@ public class QuestionService {
 	 *                                         characters or is blank
 	 */
 	public void sendQuestion(int lobbyId, UUID playerId, String question) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			if (lobby.getPhase() != LobbyPhase.QUESTION) {
 				throw new NotQuestionPhaseException("Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount()
@@ -122,7 +122,7 @@ public class QuestionService {
 						+ ", Send question denied: Lobby is not in QUESTION phase.");
 			}
 
-			PlayerStatus playerStatus = playerService.getPlayerById(lobbyId, playerId).getStatus();
+			PlayerStatus playerStatus = playerLookup.getPlayerById(lobbyId, playerId).getStatus();
 			if (playerStatus != PlayerStatus.ALIVE) {
 				throw new SendQuestionDeniedException(
 						"Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount() + "Player Id: " + playerId
@@ -158,7 +158,7 @@ public class QuestionService {
 	 * @param lobbyId the lobbyId to delete the question
 	 */
 	public void deleteQuestion(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			lobby.setQuestion(null);
 			log.info("Lobby Id: {}, Lobby Round: {}, Question was successfully deleted.", lobbyId,

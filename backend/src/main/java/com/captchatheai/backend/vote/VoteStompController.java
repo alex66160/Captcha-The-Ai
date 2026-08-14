@@ -7,7 +7,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
-import com.captchatheai.backend.player.PlayerService;
+import com.captchatheai.backend.player.PlayerLookup;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class VoteStompController {
 
-	private final PlayerService playerService;
+	private final PlayerLookup playerLookup;
 
 	private final VoteService voteService;
 
@@ -36,8 +36,8 @@ public class VoteStompController {
 	public void sendVote(@DestinationVariable int lobbyId, StompHeaderAccessor accessor,
 			SubmitVoteRequest submitVoteRequest) {
 		String sessionId = accessor.getSessionId();
-		UUID voterId = playerService.getPlayerIdBySessionId(lobbyId, sessionId);
-		UUID voteTargetId = playerService.getPlayerIdByName(lobbyId, submitVoteRequest.voteTargetName());
+		UUID voterId = playerLookup.getPlayerIdBySessionId(lobbyId, sessionId);
+		UUID voteTargetId = playerLookup.getPlayerIdByName(lobbyId, submitVoteRequest.voteTargetName());
 
 		voteService.sendVote(lobbyId, voterId, voteTargetId);
 	}

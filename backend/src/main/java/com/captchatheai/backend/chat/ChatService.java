@@ -12,10 +12,10 @@ import com.captchatheai.backend.chat.exception.CannotChatException;
 import com.captchatheai.backend.chat.exception.ChatCooldownException;
 import com.captchatheai.backend.chat.exception.InvalidChatMessageException;
 import com.captchatheai.backend.lobby.Lobby;
+import com.captchatheai.backend.lobby.LobbyLookup;
 import com.captchatheai.backend.lobby.LobbyPhase;
-import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
-import com.captchatheai.backend.player.PlayerService;
+import com.captchatheai.backend.player.PlayerLookup;
 import com.captchatheai.backend.player.PlayerStatus;
 
 import lombok.RequiredArgsConstructor;
@@ -42,9 +42,9 @@ public class ChatService {
 	/** Maximum length for a chat message */
 	private static final int MAX_CHAT_LENGTH = 100;
 
-	private final LobbyService lobbyService;
+	private final LobbyLookup lobbyLookup;
 
-	private final PlayerService playerService;
+	private final PlayerLookup playerLookup;
 
 	private final SimpMessagingTemplate messagingTemplate;
 
@@ -64,10 +64,10 @@ public class ChatService {
 	 *                                     yet
 	 */
 	public void sendChatMessage(int lobbyId, UUID playerId, String message) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
-			Player player = playerService.getPlayerById(lobbyId, playerId);
+			Player player = playerLookup.getPlayerById(lobbyId, playerId);
 
 			PlayerStatus playerStatus = player.getStatus();
 
@@ -96,12 +96,12 @@ public class ChatService {
 			}
 			player.setLastChatTime(Instant.now());
 
-			Deque<ChatMessage> chatHistory = lobbyService.getLobbyById(lobbyId).getChatHistory();
+			Deque<ChatMessage> chatHistory = lobbyLookup.getLobbyById(lobbyId).getChatHistory();
 
 			ChatMessage chatMessage = new ChatMessage(player.getName(), message,
 					Duration.between(lobby.getGameStartTime(), Instant.now()).toSeconds());
 
-			SentChatMessageEvent chatMessageSentEvent = new SentChatMessageEvent(player.getName(), message);
+			SentChatMessageBroadcast sentChatMessageBroadcast = new SentChatMessageBroadcast(player.getName(), message);
 
 			// Only store chat messages for players that are alive.
 			if (playerStatus == PlayerStatus.ALIVE) {
@@ -111,13 +111,14 @@ public class ChatService {
 				chatHistory.addLast(chatMessage);
 				// Broadcast messages that are made by alive players to the default chat, but do
 				// not broadcast messages made by spectators to the default chat.
-				messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyId + "/chat-messages", chatMessageSentEvent);
+				messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyId + "/chat-messages",
+						sentChatMessageBroadcast);
 			}
 
 			// Messages that are made by either alive players or spectators should be seen
 			// by spectators.
 			messagingTemplate.convertAndSend("/topic/lobbies/" + lobbyId + "/spectators/chat-messages",
-					chatMessageSentEvent);
+					sentChatMessageBroadcast);
 
 			log.info("Lobby Id: {}, Player Id: {}, Player State: {}, Chat message was successfully sent out.", lobbyId,
 					playerId, playerStatus);
@@ -130,7 +131,7 @@ public class ChatService {
 	 * @param lobbyId the lobby to delete messages from
 	 */
 	public void deleteChatHistory(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			lobby.getChatHistory().clear();
 			log.info("Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Chat history was successfully deleted.", lobbyId,

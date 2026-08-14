@@ -6,7 +6,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
-import com.captchatheai.backend.player.PlayerService;
+import com.captchatheai.backend.player.PlayerLookup;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class ChatStompController {
 
 	private final ChatService chatService;
-	private final PlayerService playerService;
+	private final PlayerLookup playerLookup;
 
 	/**
 	 * The sendChatMessage endpoint allows a player to send a chat message to a
@@ -37,7 +37,7 @@ public class ChatStompController {
 			@Payload SendChatMessageCommand sendChatMessageCommand) {
 		String sessionId = accessor.getSessionId();
 
-		chatService.sendChatMessage(lobbyId, playerService.getPlayerIdBySessionId(lobbyId, sessionId),
+		chatService.sendChatMessage(lobbyId, playerLookup.getPlayerIdBySessionId(lobbyId, sessionId),
 				sendChatMessageCommand.message());
 	}
 

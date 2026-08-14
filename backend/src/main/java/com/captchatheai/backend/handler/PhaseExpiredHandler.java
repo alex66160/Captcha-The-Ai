@@ -5,13 +5,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import com.captchatheai.backend.ai.AiEvent;
 import com.captchatheai.backend.ai.ScheduledAiEvent;
 import com.captchatheai.backend.lobby.Lobby;
+import com.captchatheai.backend.lobby.LobbyLookup;
 import com.captchatheai.backend.lobby.LobbyPhase;
+import com.captchatheai.backend.lobby.LobbyPhaseExpiredEvent;
 import com.captchatheai.backend.lobby.LobbyService;
+import com.captchatheai.backend.player.PlayerLookup;
 import com.captchatheai.backend.player.PlayerService;
 import com.captchatheai.backend.player.PlayerStatus;
 import com.captchatheai.backend.question.QuestionService;
@@ -32,11 +36,72 @@ import lombok.extern.slf4j.Slf4j;
 public class PhaseExpiredHandler {
 
 	private final LobbyService lobbyService;
-	private final PlayerService playerService;
 
+	private final LobbyLookup lobbyLookup;
+	private final PlayerService playerService;
+	private final PlayerLookup playerLookup;
 	private final QuestionService questionService;
 
 	private final VoteService voteService;
+
+	@EventListener
+	/**
+	 * The handleLobbyPhaseExpiredEvent method advances the lobby to a new phase by
+	 * calling the respective handler to handle whichever phase had just expired.
+	 * 
+	 * @param lobbyId the lobbyId to advance the phase on
+	 */
+	public void handleLobbyPhaseExpiredEvent(LobbyPhaseExpiredEvent lobbyPhaseExpiredEvent) {
+		int lobbyId = lobbyPhaseExpiredEvent.lobbyId();
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
+		synchronized (lobby) {
+			switch (lobby.getPhase()) {
+
+			case INTERMISSION -> handleIntermissionExpired(lobbyId);
+
+			case STARTING -> handleStartingExpired(lobbyId);
+
+			case INTRO -> handleIntroExpired(lobbyId);
+
+			case QUESTION_ANNOUNCEMENT -> handleQuestionAnnouncementExpired(lobbyId);
+
+			case QUESTION -> handleQuestionExpired(lobbyId);
+
+			case QUESTION_DISCONNECT -> handleQuestionDisconnectExpired(lobbyId);
+
+			case QUESTION_EMPTY -> handleQuestionEmptyExpired(lobbyId);
+
+			case ANSWER_ANNOUNCEMENT -> handleAnswerAnnouncementExpired(lobbyId);
+
+			case ANSWER -> handleAnswerExpired(lobbyId);
+
+			case DISCUSS_ANNOUNCEMENT -> handleDiscussAnnouncementExpired(lobbyId);
+
+			case DISCUSS -> handleDiscussExpired(lobbyId);
+
+			case VOTING -> handleVotingExpired(lobbyId);
+
+			case VOTING_RESTART -> handleVotingRestartExpired(lobbyId);
+
+			case REVEAL_ANNOUNCEMENT -> handleRevealAnnouncementExpired(lobbyId);
+
+			case REVEAL -> handleRevealExpired(lobbyId);
+
+			case REVEAL_TIE -> handleRevealTieExpired(lobbyId);
+
+			case ELIMINATION -> handleEliminationExpired(lobbyId);
+
+			case AI_PLAYER_WON -> handleGameResultExpired(lobbyId);
+
+			case AI_PLAYER_FAILED_TO_RESPOND -> handleGameResultExpired(lobbyId);
+
+			case HUMAN_PLAYERS_WON -> handleGameResultExpired(lobbyId);
+
+			case NOT_ENOUGH_PLAYERS -> handleGameResultExpired(lobbyId);
+
+			}
+		}
+	}
 
 	/**
 	 * The handleIntermissionExpired method kicks all human players in the lobby and
@@ -45,7 +110,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the intermission phase expired
 	 */
 	public void handleIntermissionExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			List<UUID> playerIdsToKick = lobby.getPlayerIds().stream()
 					.filter((playerId) -> !playerId.equals(lobby.getAiPlayerId())).toList();
@@ -64,7 +129,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the starting phase expired
 	 */
 	public void handleStartingExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			playerService.assignPlayerIdentities(lobbyId);
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.INTRO);
@@ -78,7 +143,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the intro phase expired
 	 */
 	public void handleIntroExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			questionService.setNextQuestionWriter(lobbyId);
 
@@ -94,7 +159,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the question announcement phase expired
 	 */
 	public void handleQuestionAnnouncementExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			if (lobby.getAiPlayerId().equals(lobby.getQuestionWriterId())) {
 				lobby.setScheduledAiEvent(new ScheduledAiEvent(AiEvent.GENERATE_QUESTION,
@@ -116,7 +181,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the question phase expired
 	 */
 	public void handleQuestionExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			if ((lobby.getQuestion() == null || lobby.getQuestion().isBlank())
@@ -149,7 +214,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the question disconnect phase expired
 	 */
 	public void handleQuestionDisconnectExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			questionService.deleteQuestion(lobbyId);
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.QUESTION);
@@ -165,7 +230,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the question empty phase expired
 	 */
 	public void handleQuestionEmptyExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			questionService.deleteQuestion(lobbyId);
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.QUESTION);
@@ -181,7 +246,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the answer announcement phase expired
 	 */
 	public void handleAnswerAnnouncementExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			if (!lobby.getAiPlayerId().equals(lobby.getQuestionWriterId())) {
 				lobby.setScheduledAiEvent(new ScheduledAiEvent(AiEvent.GENERATE_ANSWER,
@@ -204,7 +269,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the answer phase expired
 	 */
 	public void handleAnswerExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			Map<UUID, String> answersById = lobby.getAnswersById();
 
@@ -212,7 +277,7 @@ public class PhaseExpiredHandler {
 					// The players to kick must have not answered, be alive, and not be a question
 					// writer or ai player.
 					.filter((playerId) -> !answersById.containsKey(playerId)
-							&& playerService.getPlayerById(lobbyId, playerId).getStatus() == PlayerStatus.ALIVE
+							&& playerLookup.getPlayerById(lobbyId, playerId).getStatus() == PlayerStatus.ALIVE
 							&& !playerId.equals(lobby.getAiPlayerId()) && !playerId.equals(lobby.getQuestionWriterId()))
 					.toList();
 			playerIdsToKick.stream().forEach((playerId) -> playerService.kickPlayer(lobbyId, playerId));
@@ -237,7 +302,7 @@ public class PhaseExpiredHandler {
 	 */
 	public void handleDiscussAnnouncementExpired(int lobbyId) {
 
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.DISCUSS);
@@ -251,7 +316,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the discuss phase expired
 	 */
 	public void handleDiscussExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			lobby.setScheduledAiEvent(new ScheduledAiEvent(AiEvent.GENERATE_VOTE,
@@ -270,13 +335,13 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the voting phase expired
 	 */
 	public void handleVotingExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			Map<UUID, UUID> voteTargetByVoter = lobby.getVoteTargetByVoter();
 			List<UUID> playerIdsToKick = lobby.getPlayerIds().stream()
 					// Kick players that did not vote and are alive and not the ai player.
 					.filter((playerId) -> !voteTargetByVoter.containsKey(playerId)
-							&& playerService.getPlayerById(lobbyId, playerId).getStatus() == PlayerStatus.ALIVE
+							&& playerLookup.getPlayerById(lobbyId, playerId).getStatus() == PlayerStatus.ALIVE
 							&& !playerId.equals(lobby.getAiPlayerId()))
 					.toList();
 			playerIdsToKick.stream().forEach((playerId) -> playerService.kickPlayer(lobbyId, playerId));
@@ -300,7 +365,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the voting restart phase expired
 	 */
 	public void handleVotingRestartExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			voteService.clearVotes(lobbyId);
 			lobby.setScheduledAiEvent(new ScheduledAiEvent(AiEvent.GENERATE_VOTE,
@@ -317,7 +382,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the reveal announcement phase expired
 	 */
 	public void handleRevealAnnouncementExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.REVEAL);
@@ -333,7 +398,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the reveal phase expired
 	 */
 	public void handleRevealExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			voteService.calculateVotes(lobbyId);
@@ -352,7 +417,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the reveal tie phase expired
 	 */
 	public void handleRevealTieExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.ELIMINATION);
@@ -371,7 +436,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had the elimination phase expired
 	 */
 	public void handleEliminationExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			if (lobby.getEliminatedPlayerId().equals(lobby.getAiPlayerId())) {
@@ -401,7 +466,7 @@ public class PhaseExpiredHandler {
 	 * @param lobbyId the lobby that had a game result phase expired
 	 */
 	public void handleGameResultExpired(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			lobbyService.prepareLobbyForNextGame(lobbyId);
