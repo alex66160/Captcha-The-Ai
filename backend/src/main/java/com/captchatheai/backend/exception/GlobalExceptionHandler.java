@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
 	 */
 	@ExceptionHandler({ GetAnswersDeniedException.class, GetQuestionDeniedException.class,
 			GetVotesDeniedException.class, GetTiedPlayersDeniedException.class, PlayerNotFoundException.class,
-			GetAiPlayerDeniedException.class })
+			GetAiPlayerDeniedException.class, LobbyNotFoundException.class })
 	public void handleRestExceptions(RuntimeException e) {
 		log.warn(e.getMessage());
 	}

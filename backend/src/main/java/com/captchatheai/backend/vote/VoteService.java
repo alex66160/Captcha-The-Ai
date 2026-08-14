@@ -6,13 +6,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import com.captchatheai.backend.lobby.Lobby;
+import com.captchatheai.backend.lobby.LobbyLookup;
 import com.captchatheai.backend.lobby.LobbyPhase;
-import com.captchatheai.backend.lobby.LobbyService;
 import com.captchatheai.backend.player.Player;
-import com.captchatheai.backend.player.PlayerService;
+import com.captchatheai.backend.player.PlayerLookup;
 import com.captchatheai.backend.player.PlayerStatus;
 import com.captchatheai.backend.vote.exception.AlreadyVotedException;
 import com.captchatheai.backend.vote.exception.GetTiedPlayersDeniedException;
@@ -35,9 +36,11 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class VoteService {
 
-	private final LobbyService lobbyService;
+	private final LobbyLookup lobbyLookup;
 
-	private final PlayerService playerService;
+	private final PlayerLookup playerLookup;
+
+	private final ApplicationEventPublisher eventPublisher;
 
 	/**
 	 * The getVotes method will return the votes in a lobby as the list of players,
@@ -48,7 +51,7 @@ public class VoteService {
 	 * @throws GetVotesDeniedException if the lobby is not in the reveal phase
 	 */
 	public VotesResponse getVotes(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			if (lobby.getPhase() != LobbyPhase.REVEAL) {
@@ -62,11 +65,11 @@ public class VoteService {
 			// Construct a list of Vote targets.
 			List<VoteTargetResponse> voteTargets = votersByVoteTarget.entrySet().stream().map((entry) -> {
 
-				Player voteTargetPlayer = playerService.getPlayerById(lobbyId, entry.getKey());
+				Player voteTargetPlayer = playerLookup.getPlayerById(lobbyId, entry.getKey());
 
 				// Within each vote target, construct the list of voters that voted for them.
 				List<VoterResponse> voters = entry.getValue().stream().map((voterId) -> {
-					Player voter = playerService.getPlayerById(lobbyId, voterId);
+					Player voter = playerLookup.getPlayerById(lobbyId, voterId);
 					return new VoterResponse(voter.getName(), voter.getAvatar());
 				}).toList();
 
@@ -88,7 +91,7 @@ public class VoteService {
 	 *                                       phase
 	 */
 	public TiedPlayersResponse getTiedPlayers(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			if (lobby.getPhase() != LobbyPhase.REVEAL_TIE) {
 				throw new GetTiedPlayersDeniedException("Lobby Id: " + lobbyId + ", Lobby Round: "
@@ -98,7 +101,7 @@ public class VoteService {
 			List<UUID> tiedPlayerIds = lobby.getTiedPlayerIds();
 			List<TiedPlayerResponse> tiedPlayers = tiedPlayerIds.stream().map((tiedPlayerId) -> {
 
-				Player tiedPlayer = playerService.getPlayerById(lobbyId, tiedPlayerId);
+				Player tiedPlayer = playerLookup.getPlayerById(lobbyId, tiedPlayerId);
 				return new TiedPlayerResponse(tiedPlayer.getName(), tiedPlayer.getAvatar(),
 						tiedPlayerId.equals(lobby.getEliminatedPlayerId()));
 
@@ -123,7 +126,7 @@ public class VoteService {
 	 *                               voting
 	 */
 	public void sendVote(int lobbyId, UUID voterId, UUID voteTargetId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			if (lobby.getPhase() != LobbyPhase.VOTING) {
@@ -132,9 +135,9 @@ public class VoteService {
 						+ voteTargetId + ", Send vote denied: Lobby is not in VOTING phase.");
 			}
 
-			Player voterPlayer = playerService.getPlayerById(lobbyId, voterId);
+			Player voterPlayer = playerLookup.getPlayerById(lobbyId, voterId);
 
-			Player voteTargetPlayer = playerService.getPlayerById(lobbyId, voteTargetId);
+			Player voteTargetPlayer = playerLookup.getPlayerById(lobbyId, voteTargetId);
 
 			if (voterPlayer.getStatus() != PlayerStatus.ALIVE) {
 				throw new VotingDeniedException("Lobby Id: " + lobbyId + ", Lobby Round: " + lobby.getRoundCount()
@@ -163,12 +166,8 @@ public class VoteService {
 			log.info(
 					"Lobby Id: {}, Lobby Round: {}, Voter Id: {}, Vote Target Id: {}, Vote was successfully submitted.",
 					lobbyId, lobby.getRoundCount(), voterId, voteTargetId);
-			// If all players have finished voting, we can skip ahead to the next phase.
-			if (voteTargetByVoter.size() == lobby.getAlivePlayerCount()) {
-				log.info("Lobby Id: {}, Lobby Round: {}, Voting has finished early.", lobbyId, lobby.getRoundCount());
-				lobbyService.transitionToPhase(lobbyId, LobbyPhase.REVEAL_ANNOUNCEMENT);
-			}
 
+			eventPublisher.publishEvent(new SubmittedVoteEvent(lobbyId));
 		}
 
 	}
@@ -182,7 +181,7 @@ public class VoteService {
 	 * 
 	 */
 	public void calculateVotes(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 
 			Map<UUID, List<UUID>> votersByVoteTarget = lobby.getVotersByVoteTarget();
@@ -229,7 +228,7 @@ public class VoteService {
 	 * @param lobbyId the lobbyId to clear the votes on
 	 */
 	public void clearVotes(int lobbyId) {
-		Lobby lobby = lobbyService.getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			lobby.getVoteTargetByVoter().clear();
 			lobby.getVotersByVoteTarget().clear();

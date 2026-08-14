@@ -40,7 +40,7 @@ public class VoteRestController {
 	 * @param lobbyId the lobbyId to get the tied players from
 	 * @return the tied players from a lobby
 	 */
-	@GetMapping("/{lobbyId}/tiedPlayers")
+	@GetMapping("/{lobbyId}/tied-players")
 	public ResponseEntity<TiedPlayersResponse> getTiedPlayers(@PathVariable int lobbyId) {
 		return ResponseEntity.ok(voteService.getTiedPlayers(lobbyId));
 

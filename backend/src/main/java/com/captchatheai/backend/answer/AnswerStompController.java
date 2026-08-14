@@ -8,7 +8,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
-import com.captchatheai.backend.player.PlayerService;
+import com.captchatheai.backend.player.PlayerLookup;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,7 +24,7 @@ public class AnswerStompController {
 
 	private final AnswerService answerService;
 
-	private final PlayerService playerService;
+	private final PlayerLookup playerLookup;
 
 	/**
 	 * The sendAnswer endpoint sends an answer for a player to a given lobby.
@@ -34,11 +34,11 @@ public class AnswerStompController {
 	 *                            player
 	 * @param submitAnswerRequest the request that contains the answer of the player
 	 */
-	@MessageMapping("/lobbies/{lobbyId}/sendAnswer")
+	@MessageMapping("/lobbies/{lobbyId}/answers")
 	public void sendAnswer(@DestinationVariable int lobbyId, StompHeaderAccessor accessor,
 			@Payload SubmitAnswerRequest submitAnswerRequest) {
 		String sessionId = accessor.getSessionId();
-		UUID playerId = playerService.getPlayerIdBySessionId(lobbyId, sessionId);
+		UUID playerId = playerLookup.getPlayerIdBySessionId(lobbyId, sessionId);
 
 		answerService.sendAnswer(lobbyId, playerId, submitAnswerRequest.answer());
 

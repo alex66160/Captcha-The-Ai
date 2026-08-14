@@ -6,18 +6,21 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.captchatheai.backend.ai.AiService;
+import com.captchatheai.backend.ai.ScheduledAiEvent;
 import com.captchatheai.backend.answer.AnswerService;
-import com.captchatheai.backend.handler.PhaseExpiredHandler;
 import com.captchatheai.backend.lobby.exception.IncorrectLobbyPasswordException;
 import com.captchatheai.backend.lobby.exception.LobbyErrorType;
 import com.captchatheai.backend.lobby.exception.LobbyErrorTypeResponse;
 import com.captchatheai.backend.lobby.exception.LobbyFullException;
 import com.captchatheai.backend.lobby.exception.LobbyNotFoundException;
 import com.captchatheai.backend.player.Player;
+import com.captchatheai.backend.player.PlayerLookup;
 import com.captchatheai.backend.player.PlayerService;
 import com.captchatheai.backend.player.PlayerStatus;
 import com.captchatheai.backend.question.QuestionService;
@@ -26,19 +29,34 @@ import com.captchatheai.backend.vote.VoteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * The LobbyService class allows players to get the current lobby state, join a
+ * random lobby, join a lobby by id, create lobbies, and leave lobbies. It also
+ * broadcasts lobby and player stats, and contains the actual runner for the
+ * lobbies themselves using a scheduled 0.5 second tick checker to check for
+ * lobbies that need to advance phases. The actual handler code for expired
+ * phases is in PhaseExpiredHandler.
+ * 
+ * @author Alex Liu
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LobbyService {
-
 	private final LobbyRepository lobbyRepository;
 
-	private final PhaseExpiredHandler phaseExpiredHandler;
+	private final LobbyLookup lobbyLookup;
+
 	private final PlayerService playerService;
+
+	private final PlayerLookup playerLookup;
 
 	private final QuestionService questionService;
 	private final AnswerService answerService;
 	private final VoteService voteService;
+	private final AiService aiService;
+
+	private final ApplicationEventPublisher eventPublisher;
 	private final SimpMessagingTemplate messagingTemplate;
 
 	/** The max players that a lobby can have */
@@ -58,47 +76,66 @@ public class LobbyService {
 
 	/**
 	 * The lobbyRunner method is responsible for checking all the lobbies to see if
-	 * any of their phases has expired, and if any the lobbies have scheduled events
-	 * to execute.
+	 * any of their phases has expired, and if any the lobbies have scheduled ai
+	 * events to execute.
 	 */
 	@Scheduled(fixedRate = 500)
 	public void lobbyRunner() {
 		for (Lobby lobby : lobbyRepository.findAll()) {
 			synchronized (lobby) {
 				if (lobby.getPhaseEndTime().isBefore(Instant.now())) {
-					advancePhase(lobby.getId());
+					eventPublisher.publishEvent(new LobbyPhaseExpiredEvent(lobby.getId()));
 				}
 
-				// add code to check if the scheduledai event is ready to execute
+				ScheduledAiEvent scheduledAiEvent = lobby.getScheduledAiEvent();
 
+				if (scheduledAiEvent != null && !scheduledAiEvent.isProcessing()
+						&& scheduledAiEvent.getTimeToExecute().isBefore(Instant.now())) {
+					// We need to set processing to true here instead of in handleScheduledAiEvent
+					// as handleScheduledAiEvent is async.
+					scheduledAiEvent.setProcessing(true);
+
+					aiService.handleScheduledAiEvent(lobby.getId(), scheduledAiEvent);
+
+				}
 			}
 		}
 
 	}
 
-	public Lobby getLobbyById(int id) {
-		return lobbyRepository.findById(id).orElseThrow(() -> new LobbyNotFoundException(id));
-	}
+	/**
+	 * The getLobbyState method broadcasts the lobby state to a given player based
+	 * off their sessionId.
+	 * 
+	 * @param lobbyId   the lobby to get the lobby state from
+	 * @param sessionId the players sessionId to broadcast to
+	 */
+	public void getLobbyState(int lobbyId, String sessionId) {
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 
-	public void getLobbyState(int id, String sessionId) {
-		Lobby lobby = getLobbyById(id);
-
-		UUID playerId = playerService.getPlayerIdBySessionId(id, sessionId);
+		UUID playerId = playerLookup.getPlayerIdBySessionId(lobbyId, sessionId);
 
 		LobbyState lobbyState = new LobbyState(lobby.getPhase(), lobby.getPhaseEndTime(), lobby.getRoundCount(),
-				playerService.getPlayers(id, playerId));
+				playerService.getPlayers(lobbyId, playerId));
 
-		messagingTemplate.convertAndSend("/queue/lobbies/" + id + "/lobbyState/" + sessionId, lobbyState);
+		messagingTemplate.convertAndSend("/queue/lobbies/" + lobbyId + "/state/" + sessionId, lobbyState);
 
 	}
 
+	/**
+	 * The broadcastLobbyState methods broadcasts the lobby state to all players of
+	 * a given lobby.
+	 * 
+	 * @param lobbyId the lobby to broadcast the lobby state of to all the players
+	 */
 	public void broadcastLobbyState(int lobbyId) {
-		Lobby lobby = getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			Map<String, UUID> playerIdsBySessionId = lobby.getPlayerIdsBySessionId();
 
+			// Filter out disconnected player ids because they are not in the lobby anymore.
 			playerIdsBySessionId.entrySet().stream()
-					.filter((entry) -> playerService.getPlayerById(lobbyId, entry.getValue())
+					.filter((entry) -> playerLookup.getPlayerById(lobbyId, entry.getValue())
 							.getStatus() != PlayerStatus.DISCONNECTED)
 					.forEach((entry) -> getLobbyState(lobbyId, entry.getKey()));
 
@@ -106,26 +143,39 @@ public class LobbyService {
 
 	}
 
+	/**
+	 * The joinLobby method allows a player to join a randomized lobby, and it first
+	 * filters based off of lobbies that arent full, and then checks if there are
+	 * any lobbies currently in the INTERMISSION or STARTING phase so that players
+	 * dont need to wait to play. Otherwise, it just makes a new public lobby and
+	 * puts the player in that lobby.
+	 * 
+	 * @param sessionId the sessionId of the player that wants to join a lobby
+	 */
 	public void joinLobby(String sessionId) {
+		// We use a while true loop to retry another lobby to join in case our max
+		// players check is invalidated by the time we synchronize on the lobby to join.
 		while (true) {
-			// first check if a lobby exists that isnt full and is a public lobby
+			// First filter by lobbies that are public (not password protected) and arent
+			// full.
 			List<Lobby> lobbiesToJoin = lobbyRepository.findAll().stream()
 					.filter((lobby) -> lobby.getPlayerCount() <= MAX_PLAYERS && lobby.getPassword() == null).toList();
 			Lobby lobbyToJoin;
-			// if no avaiable lobbies exist, just make a new one.
+			// If no available lobbies exist, just make a new one.
 			if (lobbiesToJoin.isEmpty()) {
 				createLobby(sessionId, null);
 				break;
 
 			} else {
-				// set lobbytojoin from a random lobby that isnt full as a backup in case next
-				// filter returns empty
+				// Set the lobbyToJoin from a random lobby that isnt full as a backup in case
+				// the next filter returns empty
 				lobbyToJoin = lobbiesToJoin.get(ThreadLocalRandom.current().nextInt(lobbiesToJoin.size()));
-				// attempt to filter further so that players can join games quicker.
+				// Here we attempt to filter further so that players can join games quicker.
 				lobbiesToJoin = lobbiesToJoin.stream().filter((lobby) -> lobby.getPhase() == LobbyPhase.INTERMISSION
 						|| lobby.getPhase() == LobbyPhase.STARTING).toList();
 
-				// if a lobby exists in intermission or start, set it equal to a lobby there.
+				// If a lobby exists in intermission or start, set it equal to a random lobby
+				// there.
 				if (!lobbiesToJoin.isEmpty()) {
 					lobbyToJoin = lobbiesToJoin.get(ThreadLocalRandom.current().nextInt(lobbiesToJoin.size()));
 
@@ -135,12 +185,14 @@ public class LobbyService {
 
 			synchronized (lobbyToJoin) {
 				if (lobbyToJoin.getPlayerCount() >= MAX_PLAYERS) {
-					// retry if the max players is violated by the time we tried to sync.
+					// Retry if the max players is violated by the time we tried to sync.
 					continue;
 				}
 
 				playerService.addPlayer(lobbyToJoin.getId(), sessionId);
-				messagingTemplate.convertAndSend("/queue/join/" + sessionId, new LobbyIdResponse(lobbyToJoin.getId()));
+				messagingTemplate.convertAndSend("/queue/lobbies/join/" + sessionId,
+						new LobbyIdResponse(lobbyToJoin.getId()));
+
 				break;
 
 			}
@@ -148,58 +200,91 @@ public class LobbyService {
 
 	}
 
-	public void joinLobbyById(int id, String sessionId, String password) {
+	/**
+	 * The getIsLobbyPasswordProtected method checks whether or not a given lobby is
+	 * password protected.
+	 * 
+	 * @param lobbyId the lobby to check if its password protected
+	 * @return whether or not the lobby is password protected or not
+	 */
+	public IsLobbyPasswordProtectedResponse getIsLobbyPasswordProtected(int lobbyId) {
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
+		synchronized (lobby) {
+			return new IsLobbyPasswordProtectedResponse(lobby.getPassword() != null);
+		}
+
+	}
+
+	/**
+	 * The joinLobbyById method allows a player to join a lobby through a lobbyId.
+	 * 
+	 * @param lobbyId   the lobby the player wants to join
+	 * @param sessionId the sessionId of the player
+	 * @param password  the password of the lobby
+	 * @throws LobbyNotFoundException          if the lobbyId does not exist
+	 * @throws IncorrectLobbyPasswordException if the password is incorrect
+	 * @throws LobbyFullException              if the lobby to join is full.
+	 */
+	public void joinLobbyById(int lobbyId, String sessionId, String password) {
 		Lobby lobby;
 		try {
-			lobby = getLobbyById(id);
+			lobby = lobbyLookup.getLobbyById(lobbyId);
 
 		} catch (LobbyNotFoundException e) {
-			messagingTemplate.convertAndSend("/queue/error/" + sessionId,
+			messagingTemplate.convertAndSend("/queue/lobbies/errors/" + sessionId,
 					new LobbyErrorTypeResponse(LobbyErrorType.LOBBY_NOT_FOUND));
+			// Rethrow exception back up so our exception handler can properly log it.
 			throw e;
 		}
 
 		synchronized (lobby) {
 
 			if (lobby.getPassword() != null && !lobby.getPassword().equals(password)) {
-				messagingTemplate.convertAndSend("/queue/error/" + sessionId,
+				messagingTemplate.convertAndSend("/queue/lobbies/errors/" + sessionId,
 						new LobbyErrorTypeResponse(LobbyErrorType.LOBBY_INCORRECT_PASSWORD));
-				throw new IncorrectLobbyPasswordException();
+				throw new IncorrectLobbyPasswordException("Lobby Id: " + lobbyId + ", Session Id: " + sessionId
+						+ ", Join lobby by id denied: Incorrect password entered.");
 			}
 
 			if (lobby.getPlayerCount() >= MAX_PLAYERS) {
-				messagingTemplate.convertAndSend("/queue/error/" + sessionId,
+				messagingTemplate.convertAndSend("/queue/lobbies/errors/" + sessionId,
 						new LobbyErrorTypeResponse(LobbyErrorType.LOBBY_FULL));
-				throw new LobbyFullException();
+				throw new LobbyFullException("Lobby Id: " + lobbyId + ", Session Id: " + sessionId
+						+ ", Join lobby by id denied: Lobby is full.");
 			}
 
 			playerService.addPlayer(lobby.getId(), sessionId);
-			messagingTemplate.convertAndSend("/queue/join/" + sessionId, new LobbyIdResponse(lobby.getId()));
+			messagingTemplate.convertAndSend("/queue/lobbies/join/" + sessionId, new LobbyIdResponse(lobby.getId()));
 
 		}
 	}
 
-	public void leaveLobby(int id, UUID playerId) {
-		Lobby lobby = getLobbyById(id);
-		synchronized (lobby) {
-			playerService.removePlayer(id, playerId);
-		}
-
-	}
-
+	/**
+	 * The createLobby method allows a player to create a new lobby, and allows them
+	 * to make it password protected.
+	 * 
+	 * @param sessionId the player trying to make a new lobby
+	 * @param password  the password for the lobby
+	 */
 	public void createLobby(String sessionId, String password) {
 		while (true) {
-
 			Lobby lobby = new Lobby(password);
 			synchronized (lobby) {
+				// If create returns true, it means a lobby with a duplicate lobbyId was not
+				// found. Otherwise, we need to retry to create a lobby with a different id.
 				if (lobbyRepository.create(lobby)) {
 
 					transitionToPhase(lobby.getId(), LobbyPhase.INTERMISSION);
 
 					Player aiPlayer = playerService.addPlayer(lobby.getId(), null);
 					lobby.setAiPlayerId(aiPlayer.getId());
+
 					playerService.addPlayer(lobby.getId(), sessionId);
 					messagingTemplate.convertAndSend("/queue/join/" + sessionId, new LobbyIdResponse(lobby.getId()));
+
+					log.info("Lobby Id: {}, sessionId: {}, New lobby was successfully created.", lobby.getId(),
+							sessionId);
+
 					break;
 				}
 			}
@@ -207,100 +292,82 @@ public class LobbyService {
 
 	}
 
-	public void deleteLobby(int id) {
-		Lobby lobby = getLobbyById(id);
+	/**
+	 * The leaveLobby method allows a player to leave a lobby.
+	 * 
+	 * @param lobbyId  the lobby to leave from
+	 * @param playerId the player to leave
+	 */
+	public void leaveLobby(int lobbyId, UUID playerId) {
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
-			lobbyRepository.deleteById(id);
+			playerService.removePlayer(lobbyId, playerId);
 		}
 
 	}
 
-	public void prepareLobbyForNextGame(int id) {
-		Lobby lobby = getLobbyById(id);
+	/**
+	 * The deleteLobby method deletes a given lobby.
+	 * 
+	 * @param lobbyId the lobby to delete
+	 */
+	public void deleteLobby(int lobbyId) {
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
-			voteService.clearVotes(id);
-			questionService.deleteQuestion(id);
-			answerService.deleteAnswers(id);
-			playerService.clearPlayerIdentities(id);
-			playerService.removeDisconnectedPlayers(id);
+			lobbyRepository.deleteById(lobbyId);
+		}
+
+	}
+
+	/**
+	 * The prepareLobbyForNextGame method prepares a lobby for another game by
+	 * clearing votes, questions, answers, votes, round count, chat history, and
+	 * clears the player identities.
+	 * 
+	 * @param lobbyId
+	 */
+	public void prepareLobbyForNextGame(int lobbyId) {
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
+		synchronized (lobby) {
+			voteService.clearVotes(lobbyId);
+			questionService.deleteQuestion(lobbyId);
+			answerService.deleteAnswers(lobbyId);
+			playerService.clearPlayerIdentities(lobbyId);
+			playerService.removeDisconnectedPlayers(lobbyId);
+			lobby.setScheduledAiEvent(null);
 			lobby.setQuestionWriterId(null);
 			lobby.setEliminatedPlayerId(null);
 			lobby.getChatHistory().clear();
 			lobby.getGameHistory().clear();
 			lobby.setGameStartTime(null);
 			lobby.setRoundCount(1);
+
+			log.info("Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Lobby is prepared for next game.", lobbyId,
+					lobby.getRoundCount(), lobby.getPhase());
+
 		}
-	}
-
-	public void prepareLobbyForNextRound(int id) {
-
-		Lobby lobby = getLobbyById(id);
-		synchronized (lobby) {
-			voteService.clearVotes(id);
-			questionService.deleteQuestion(id);
-			answerService.deleteAnswers(id);
-
-			lobby.setRoundCount(lobby.getRoundCount() + 1);
-		}
-
 	}
 
 	/**
-	 * The advancePhase method advances the lobby to a new phase by calling the
-	 * respective handler to handle whichever phase had just expired.
+	 * The prepareLobbyForNextRound method prepares the lobby for another round by
+	 * incrementing the round counter and clearing votes, questions, answers, and
+	 * disconnected players.
 	 * 
-	 * @author Alex Liu
-	 * @param lobbyId the lobbyId to advance the phase on
+	 * @param lobbyId the lobby to prepare for the next round
 	 */
-	public void advancePhase(int lobbyId) {
-		Lobby lobby = getLobbyById(lobbyId);
+	public void prepareLobbyForNextRound(int lobbyId) {
+
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
-			switch (lobby.getPhase()) {
-
-			case INTERMISSION -> phaseExpiredHandler.handleIntermissionExpired(lobbyId);
-
-			case STARTING -> phaseExpiredHandler.handleStartingExpired(lobbyId);
-
-			case INTRO -> phaseExpiredHandler.handleIntroExpired(lobbyId);
-
-			case QUESTION_ANNOUNCEMENT -> phaseExpiredHandler.handleQuestionAnnouncementExpired(lobbyId);
-
-			case QUESTION -> phaseExpiredHandler.handleQuestionExpired(lobbyId);
-
-			case QUESTION_DISCONNECT -> phaseExpiredHandler.handleQuestionDisconnectExpired(lobbyId);
-
-			case QUESTION_EMPTY -> phaseExpiredHandler.handleQuestionEmptyExpired(lobbyId);
-
-			case ANSWER_ANNOUNCEMENT -> phaseExpiredHandler.handleAnswerAnnouncementExpired(lobbyId);
-
-			case ANSWER -> phaseExpiredHandler.handleAnswerExpired(lobbyId);
-
-			case DISCUSS_ANNOUNCEMENT -> phaseExpiredHandler.handleDiscussAnnouncementExpired(lobbyId);
-
-			case DISCUSS -> phaseExpiredHandler.handleDiscussExpired(lobbyId);
-
-			case VOTING -> phaseExpiredHandler.handleVotingExpired(lobbyId);
-
-			case VOTING_RESTART -> phaseExpiredHandler.handleVotingRestartExpired(lobbyId);
-
-			case REVEAL_ANNOUNCEMENT -> phaseExpiredHandler.handleRevealAnnouncementExpired(lobbyId);
-
-			case REVEAL -> phaseExpiredHandler.handleRevealExpired(lobbyId);
-
-			case REVEAL_TIE -> phaseExpiredHandler.handleRevealTieExpired(lobbyId);
-
-			case ELIMINATION -> phaseExpiredHandler.handleEliminationExpired(lobbyId);
-
-			case AI_PLAYER_WON -> phaseExpiredHandler.handleGameResultExpired(lobbyId);
-
-			case AI_PLAYER_FAILED_TO_RESPOND -> phaseExpiredHandler.handleGameResultExpired(lobbyId);
-
-			case HUMAN_PLAYERS_WON -> phaseExpiredHandler.handleGameResultExpired(lobbyId);
-
-			case NOT_ENOUGH_PLAYERS -> phaseExpiredHandler.handleGameResultExpired(lobbyId);
-
-			}
+			voteService.clearVotes(lobbyId);
+			questionService.deleteQuestion(lobbyId);
+			answerService.deleteAnswers(lobbyId);
+			playerService.removeDisconnectedPlayers(lobbyId);
+			lobby.setRoundCount(lobby.getRoundCount() + 1);
+			log.info("Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Lobby is prepared for next round.", lobbyId,
+					lobby.getRoundCount(), lobby.getPhase());
 		}
+
 	}
 
 	/**
@@ -312,7 +379,7 @@ public class LobbyService {
 	 * @param phase   the phase to transition to
 	 */
 	public void transitionToPhase(int lobbyId, LobbyPhase phase) {
-		Lobby lobby = getLobbyById(lobbyId);
+		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			lobby.setPhase(phase);
 			lobby.setPhaseEndTime(Instant.now().plusSeconds(phase.getDuration()));

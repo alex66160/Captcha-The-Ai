@@ -5,7 +5,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
-import com.captchatheai.backend.player.PlayerService;
+import com.captchatheai.backend.player.PlayerLookup;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,7 +20,7 @@ public class QuestionStompController {
 
 	private final QuestionService questionService;
 
-	private final PlayerService playerService;
+	private final PlayerLookup playerLookup;
 
 	/**
 	 * The sendQuestion endpoint allows players to send their questions.
@@ -29,11 +29,11 @@ public class QuestionStompController {
 	 * @param accessor              the header accessor to get the sessionId
 	 * @param submitQuestionRequest the request containing the question to be sent
 	 */
-	@MessageMapping("/lobbies/{lobbyId}/sendQuestion")
+	@MessageMapping("/lobbies/{lobbyId}/question")
 	public void sendQuestion(@DestinationVariable int lobbyId, StompHeaderAccessor accessor,
 			SubmitQuestionRequest submitQuestionRequest) {
 		String sessionId = accessor.getSessionId();
-		questionService.sendQuestion(lobbyId, playerService.getPlayerIdBySessionId(lobbyId, sessionId),
+		questionService.sendQuestion(lobbyId, playerLookup.getPlayerIdBySessionId(lobbyId, sessionId),
 				submitQuestionRequest.question());
 
 	}
