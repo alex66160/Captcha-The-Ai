@@ -1,4 +1,7 @@
-import { useState, createContext } from "react";
+import { useState, createContext, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { type IMessage } from "@stomp/stompjs";
+import { subscribe, getSessionId } from "./StompActions.ts";
 
 type LobbyPhase =
     | "INTERMISSION"
@@ -72,7 +75,22 @@ type LobbyState = {
 const lobbyContext = createContext(null);
 
 function LobbyStateProvider({ children }) {
+    const location = useLocation();
+    const lobbyId = location.pathname;
+
     const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
+    useEffect(() => {
+        const lobbyStateSubscription = subscribe(
+            `/queue/lobbies/${lobbyId}/state/${getSessionId()}`,
+            (message: IMessage) => {
+                setLobbyState(JSON.parse(message.body));
+            },
+        );
+
+        return () => {
+            lobbyStateSubscription.unsubscribe();
+        };
+    }, []);
 }
 
 export default LobbyStateProvider;
