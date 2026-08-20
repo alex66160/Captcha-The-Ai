@@ -280,7 +280,8 @@ public class LobbyService {
 					lobby.setAiPlayerId(aiPlayer.getId());
 
 					playerService.addPlayer(lobby.getId(), sessionId);
-					messagingTemplate.convertAndSend("/queue/join/" + sessionId, new LobbyIdResponse(lobby.getId()));
+					messagingTemplate.convertAndSend("/queue/lobbies/join/" + sessionId,
+							new LobbyIdResponse(lobby.getId()));
 
 					log.info("Lobby Id: {}, sessionId: {}, New lobby was successfully created.", lobby.getId(),
 							sessionId);

@@ -1,10 +1,5 @@
 import { useState } from "react";
-import {
-    subscribeAndWait,
-    publish,
-    getSessionId,
-    connect,
-} from "./StompActions.ts";
+import { subscribe, publish, getSessionId, connect } from "./StompActions.ts";
 import { useNavigate, useLocation } from "react-router-dom";
 
 type LobbyIdResponse = { lobbyId: number };
@@ -18,25 +13,20 @@ type LobbyErrorType =
 type LobbyErrorTypeResponse = { lobbyErrorType: LobbyErrorType };
 
 function Home() {
+    const location = useLocation();
     const [lobbyIdToJoin, setLobbyIdToJoin] = useState("");
     const [lobbyPassword, setLobbyPassword] = useState("");
 
-    const [message, setMessage] = useState<string | null>(null);
+    const [message, setMessage] = useState<string | null>(location.state);
 
     const [displayJoinLobbyByIdForm, setDisplayJoinLobbyByIdForm] =
         useState(false);
     const [displayCreateLobbyForm, setDisplayCreateLobbyForm] = useState(false);
 
     const navigate = useNavigate();
-    const location = useLocation();
 
-    const redirectMessage: string | null = location.state;
-    if (redirectMessage !== null) {
-        setMessage(redirectMessage);
-    }
-
-    const joinRandomLobby = async () => {
-        const lobbyIdSubscription = await subscribeAndWait(
+    const joinRandomLobby = () => {
+        const lobbyIdSubscription = subscribe(
             `/queue/lobbies/join/${getSessionId()}`,
             (message) => {
                 const lobbyIdResponse: LobbyIdResponse = JSON.parse(
@@ -50,8 +40,8 @@ function Home() {
         publish<null>("/app/lobbies/join", null);
     };
 
-    const joinLobbyById = async () => {
-        const lobbyIdSubscription = await subscribeAndWait(
+    const joinLobbyById = () => {
+        const lobbyIdSubscription = subscribe(
             `/queue/lobbies/join/${getSessionId()}`,
             (message) => {
                 const lobbyIdResponse: LobbyIdResponse = JSON.parse(
@@ -62,7 +52,7 @@ function Home() {
             },
         );
 
-        const lobbyErrorSubscription = await subscribeAndWait(
+        const lobbyErrorSubscription = subscribe(
             `/queue/lobbies/errors/${getSessionId()}`,
             (message) => {
                 const lobbyErrorTypeResponse: LobbyErrorTypeResponse =
@@ -92,66 +82,119 @@ function Home() {
         );
     };
 
-    const createLobby = async () => {
-        const lobbyIdSubscription = await subscribeAndWait(
+    const createLobby = () => {
+        console.log("ASDFASDFASDF");
+        const lobbyIdSubscription = subscribe(
             `/queue/lobbies/join/${getSessionId()}`,
             (message) => {
                 const lobbyIdResponse: LobbyIdResponse = JSON.parse(
                     message.body,
+                );
+                console.log(
+                    "Lobby id that connected: " + lobbyIdResponse.lobbyId,
                 );
                 navigate(`/${lobbyIdResponse.lobbyId}`);
                 lobbyIdSubscription.unsubscribe();
             },
         );
         const createLobbyRequest: CreateLobbyRequest = { lobbyPassword };
+        console.log("CREATE LOBBY REQUEST WAS SENT 1");
         publish<CreateLobbyRequest>("/app/lobbies/create", createLobbyRequest);
+        console.log("CREATE LOBBY REQUEST WAS SENT 2");
     };
 
     return (
         <div>
-            {message} &&
-            <div>
-                <button onClick={() => setMessage(null)}></button>
-                <p>{message}</p>
-            </div>
+            {message && (
+                <div>
+                    <button onClick={() => setMessage(null)}></button>
+                    <p>{message}</p>
+                </div>
+            )}
             <button
                 onClick={() => {
                     connect(joinRandomLobby);
                 }}
-            ></button>
-            <button onClick={() => setDisplayJoinLobbyByIdForm(true)}></button>
-            {displayJoinLobbyByIdForm} &&{" "}
-            <form
-                onSubmit={() => {
-                    connect(joinLobbyById);
+            >
+                Join random lobby button
+            </button>
+            <button
+                onClick={() => {
+                    setDisplayJoinLobbyByIdForm(true);
+                    setDisplayCreateLobbyForm(false);
+                    setLobbyIdToJoin("");
+                    setLobbyPassword("");
                 }}
             >
-                <input
-                    type="text"
-                    value={lobbyIdToJoin}
-                    onChange={(event) => setLobbyIdToJoin(event.target.value)}
-                ></input>
+                Join lobby by id button
+            </button>
+            {displayJoinLobbyByIdForm && (
+                <form
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        connect(joinLobbyById);
+                    }}
+                >
+                    <button
+                        onClick={() => {
+                            setDisplayJoinLobbyByIdForm(false);
+                        }}
+                    >
+                        Click to close join lobby by id form
+                    </button>
+                    <input
+                        type="text"
+                        value={lobbyIdToJoin}
+                        onChange={(event) =>
+                            setLobbyIdToJoin(event.target.value)
+                        }
+                    ></input>
 
-                <input
-                    type="password"
-                    value={lobbyPassword}
-                    onChange={(event) => setLobbyPassword(event.target.value)}
-                ></input>
-                <button type="submit">Submit</button>
-            </form>
-            <button onClick={() => setDisplayCreateLobbyForm(true)}></button>
-            {displayCreateLobbyForm} &&{" "}
-            <form
-                onSubmit={() => {
-                    connect(createLobby);
+                    <input
+                        type="password"
+                        value={lobbyPassword}
+                        onChange={(event) =>
+                            setLobbyPassword(event.target.value)
+                        }
+                    ></input>
+                    <button type="submit">Submit</button>
+                </form>
+            )}
+
+            <button
+                onClick={() => {
+                    setDisplayCreateLobbyForm(true);
+                    setDisplayJoinLobbyByIdForm(false);
+                    setLobbyIdToJoin("");
+                    setLobbyPassword("");
                 }}
             >
-                <input
-                    type="password"
-                    value={lobbyPassword}
-                    onChange={(event) => setLobbyPassword(event.target.value)}
-                ></input>
-            </form>
+                Create lobby button
+            </button>
+            {displayCreateLobbyForm && (
+                <form
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        connect(createLobby);
+                    }}
+                >
+                    <button
+                        onClick={() => {
+                            setDisplayCreateLobbyForm(false);
+                        }}
+                    >
+                        Click to close create lobby form
+                    </button>
+                    <input
+                        type="password"
+                        value={lobbyPassword}
+                        onChange={(event) =>
+                            setLobbyPassword(event.target.value)
+                        }
+                    ></input>
+                    <button type="submit">Submit</button>
+                </form>
+            )}
         </div>
     );
 }

@@ -1,4 +1,4 @@
-package com.captchatheai.backend.config;
+package com.captchatheai.backend.websocket;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;

@@ -398,6 +398,7 @@ public class PlayerService {
 	public void handleSessionDisconnectEvent(SessionDisconnectEvent sessionDisconnectEvent) {
 		StompHeaderAccessor accessor = StompHeaderAccessor.wrap(sessionDisconnectEvent.getMessage());
 		String sessionId = accessor.getSessionId();
+		log.info("ASDFASDFASDF sessionId: {}", sessionId);
 		// Since we do not exactly know why the disconnect event happened, we need if
 		// statements to prevent expected exceptions from occuring. A player closing
 		// their tab or refreshing will disconnect and then we will need to remove them
@@ -411,10 +412,10 @@ public class PlayerService {
 
 				if (lobby.getPlayerIdsBySessionId().containsKey(sessionId)) {
 					removePlayer(lobby.getId(), playerLookup.getPlayerIdBySessionId(lobby.getId(), sessionId));
-					log.info(
-							"Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Player Id: {}, Player has been removed as a result of a disconnect.",
-							lobby.getId(), lobby.getRoundCount(), lobby.getPhase(),
-							playerLookup.getPlayerIdBySessionId(lobby.getId(), sessionId));
+//					log.info(
+//							"Lobby Id: {}, Lobby Round: {}, Lobby Phase: {}, Player Id: {}, Player has been removed as a result of a disconnect.",
+//							lobby.getId(), lobby.getRoundCount(), lobby.getPhase(),
+//							playerLookup.getPlayerIdBySessionId(lobby.getId(), sessionId));
 				}
 			}
 		}

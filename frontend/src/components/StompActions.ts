@@ -1,11 +1,16 @@
 import { Client, type IMessage, type StompSubscription } from '@stomp/stompjs'
 
+
+type ThrowawayUUIDRequest = {throwawayUUID: `${string}-${string}-${string}-${string}-${string}`};
+type SessionIdResponse = {sessionId: string};
+
+
+
 /** The stomp client that holds the actual connection and provides stomp actions. */
 let client: Client | null = null;
 
 /** The users sessionId for the current connected session. */
 let sessionId: string | null = null;
-
 
 /**
  * The connect function connects to the backend, and then runs a given callback.
@@ -20,10 +25,22 @@ export function connect(callback: () => void): void {
     client = new Client({
         // Backend url for the stomp websocket connection
         brokerURL: "ws://localhost:8080/ws",
-        onConnect: (frame) => {
-            // Store the sessionId once it connects, we do this so that user /queue can be setup properly.
-            sessionId = frame.headers.session;
-            callback();
+        onConnect: () => {
+           console.log("CONNECTED");
+            const throwawayUUID = crypto.randomUUID();
+            subscribe(`/queue/session-id/${throwawayUUID}`, (message: IMessage) => {
+                const sessionIdResponse: SessionIdResponse = JSON.parse(message.body);
+                sessionId = sessionIdResponse.sessionId;
+                console.log("sessionId: " + sessionId);
+                callback();
+            })
+
+            publish<ThrowawayUUIDRequest>("/app/session-id", {throwawayUUID} );
+
+
+
+          
+            
         }
     });
 
@@ -49,34 +66,34 @@ export function subscribe(destination: string, callback: (message: IMessage) => 
     return client.subscribe(destination, callback);
 }
 
-/**
- * The subscribeAndWait function allows the user to subscribe to a destination and provide a callback to run when messages are
- * published to that destination, and the user is responsible for storing the StompSubscription if its successful so that they can manage
- * the unsubscribe. In addition, it makes sure that the subscribe finished before returning, unlike the other subscribe function.
- * @param destination the destination to subscribe to
- * @param callback  the behavior to run whenever something is published to that destination
- * @returns the promise which contains the subscription that was created
- * @throws Error if attempting to subscribe without a connection
- */
-export function subscribeAndWait(destination: string, callback: (message: IMessage) => void): Promise<StompSubscription>  {
+// /**
+//  * The subscribeAndWait function allows the user to subscribe to a destination and provide a callback to run when messages are
+//  * published to that destination, and the user is responsible for storing the StompSubscription if its successful so that they can manage
+//  * the unsubscribe. In addition, it makes sure that the subscribe finished before returning, unlike the other subscribe function.
+//  * @param destination the destination to subscribe to
+//  * @param callback  the behavior to run whenever something is published to that destination
+//  * @returns the promise which contains the subscription that was created
+//  * @throws Error if attempting to subscribe without a connection
+//  */
+// export function subscribeAndWait(destination: string, callback: (message: IMessage) => void): Promise<StompSubscription>  {
+//     console.log("ENTERED SUBSCRIBE AND WAIT " + destination);
+//    return new Promise((resolve) => {
+//         if (client === null) {
+//             throw new Error("Attempted to subscribe to destination: " + destination + " while disconnected.");
+//         }
+//         // The receipt to attatch to the subscribe so we have a way of knowing when its finished
+//         const receipt = crypto.randomUUID();
 
-   return new Promise((resolve) => {
-        if (client === null) {
-            throw new Error("Attempted to subscribe to destination: " + destination + " while disconnected.");
-        }
-        // The receipt to attatch to the subscribe so we have a way of knowing when its finished
-        const receipt = crypto.randomUUID();
+//         // Monitor receipt before subscribing so that we don't accidently have a race condition where
+//         // it subscribes before receipt monitor starts
+//         client.watchForReceipt(receipt, () => {
+//             resolve(subscription)
+//         });
+//         const subscription = client.subscribe(destination, callback, {receipt: receipt});
+//     }
 
-        // Monitor receipt before subscribing so that we don't accidently have a race condition where
-        // it subscribes before receipt monitor starts
-        client.watchForReceipt(receipt, () => {
-            resolve(subscription)
-        });
-        const subscription = client.subscribe(destination, callback, {receipt: receipt});
-    }
-
-    );
-}
+//     );
+// }
 
 
 /**
@@ -92,6 +109,7 @@ export function publish<T>(destination: string, data: T): void {
         throw new Error("Attempted to publish to destination: " + destination + " while disconnected.");
     }
     // Turn our data into a json string before publishing
+    console.log("PUBLSIHING" + destination);
     client.publish({destination: destination, body: JSON.stringify(data)});
 }
 
@@ -129,5 +147,7 @@ export function getSessionId(): string {
     return sessionId;
 
 }
+
+
 
 

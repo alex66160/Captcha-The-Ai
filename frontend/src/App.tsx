@@ -13,7 +13,10 @@ function App() {
             <Routes>
                 <Route path="/" element={<Home />} />
 
-                <Route path="/:lobbyId" element={<p>went to lobbyid page</p>} />
+                <Route
+                    path="/:lobbyId"
+                    element={<p>navigated to lobby id</p>}
+                />
             </Routes>
         </BrowserRouter>
     );
