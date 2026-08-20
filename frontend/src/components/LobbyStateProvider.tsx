@@ -1,96 +1,41 @@
-import { useState, createContext, useEffect } from "react";
+import { useState, createContext, useEffect, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { type IMessage } from "@stomp/stompjs";
-import { subscribe, getSessionId } from "./StompActions.ts";
+import { type IMessage, type StompSubscription } from "@stomp/stompjs";
+import { subscribeAndWait, getSessionId, publish } from "./StompActions.ts";
+import { type LobbyState } from "./LobbyTypes.ts";
 
-type LobbyPhase =
-    | "INTERMISSION"
-    | "STARTING"
-    | "INTRO"
-    | "QUESTION_ANNOUNCEMENT"
-    | "QUESTION"
-    | "QUESTION_DISCONNECT"
-    | "QUESTION_EMPTY"
-    | "ANSWER_ANNOUNCEMENT"
-    | "ANSWER"
-    | "DISCUSS_ANNOUNCEMENT"
-    | "DISCUSS"
-    | "VOTING"
-    | "VOTING_RESTART"
-    | "REVEAL_ANNOUNCEMENT"
-    | "REVEAL"
-    | "REVEAL_TIE"
-    | "ELIMINATION"
-    | "AI_PLAYER_WON"
-    | "AI_PLAYER_FAILED_TO_RESPOND"
-    | "HUMAN_PLAYERS_WON"
-    | "NOT_ENOUGH_PLAYERS";
+const lobbyContext = createContext<LobbyState | null>(null);
 
-type PlayerAvatar =
-    | "MONKEY"
-    | "DOG"
-    | "WOLF"
-    | "FOX"
-    | "RACCOON"
-    | "CAT"
-    | "LION"
-    | "TIGER"
-    | "COW"
-    | "PIG"
-    | "MOUSE"
-    | "HAMSTER"
-    | "RABBIT"
-    | "BEAR"
-    | "PANDA"
-    | "BIRD"
-    | "PENGUIN"
-    | "EAGLE"
-    | "DUCK"
-    | "FROG"
-    | "TURTLE"
-    | "SNAKE"
-    | "WHALE"
-    | "DOLPHIN"
-    | "SEAL"
-    | "SHARK"
-    | "OCTOPUS"
-    | "CRAB"
-    | "SPECTATOR"
-    | "HIDDEN";
-
-type PlayerState = {
-    playerName: string;
-    playerAvatar: PlayerAvatar;
-    isQuestionWriter: boolean;
-    isSelf: boolean;
-};
-
-type LobbyState = {
-    lobbyPhase: LobbyPhase;
-    phaseEndTime: string;
-    roundCount: number;
-    players: PlayerState[];
-};
-
-const lobbyContext = createContext(null);
-
-function LobbyStateProvider({ children }) {
+function LobbyStateProvider({ children }: { children: ReactNode }) {
     const location = useLocation();
     const lobbyId = location.pathname;
 
     const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
+
     useEffect(() => {
-        const lobbyStateSubscription = subscribe(
-            `/queue/lobbies/${lobbyId}/state/${getSessionId()}`,
-            (message: IMessage) => {
-                setLobbyState(JSON.parse(message.body));
-            },
-        );
+        let lobbyStateSubscription: StompSubscription | null = null;
+
+        (async () => {
+            lobbyStateSubscription = await subscribeAndWait(
+                `/queue/lobbies/${lobbyId}/state/${getSessionId()}`,
+                (message: IMessage) => {
+                    setLobbyState(JSON.parse(message.body));
+                },
+            );
+
+            publish<null>(`app/lobbies/${lobbyId}/state`, null);
+        })();
 
         return () => {
-            lobbyStateSubscription.unsubscribe();
+            lobbyStateSubscription?.unsubscribe();
         };
-    }, []);
+    }, [lobbyId]);
+
+    return (
+        <lobbyContext.Provider value={lobbyState}>
+            {children}
+        </lobbyContext.Provider>
+    );
 }
 
 export default LobbyStateProvider;
