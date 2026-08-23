@@ -119,6 +119,7 @@ public class LobbyService {
 				playerService.getPlayers(lobbyId, playerId));
 
 		messagingTemplate.convertAndSend("/queue/lobbies/" + lobbyId + "/state/" + sessionId, lobbyState);
+		log.info("LOBBY STATE SENT OUT FOR SESSIONID: {}", sessionId);
 
 	}
 
@@ -163,6 +164,7 @@ public class LobbyService {
 			Lobby lobbyToJoin;
 			// If no available lobbies exist, just make a new one.
 			if (lobbiesToJoin.isEmpty()) {
+				log.info("NO LOBBIES AVAILABL CREATING NEW ONE{}", sessionId);
 				createLobby(sessionId, null);
 				break;
 
@@ -192,7 +194,7 @@ public class LobbyService {
 				playerService.addPlayer(lobbyToJoin.getId(), sessionId);
 				messagingTemplate.convertAndSend("/queue/lobbies/join/" + sessionId,
 						new LobbyIdResponse(lobbyToJoin.getId()));
-
+				log.info("JOIN RESPONSE SENT OUT FOR SESSIONID {} LOBBYID {}", sessionId, lobbyToJoin.getId());
 				break;
 
 			}
@@ -255,6 +257,7 @@ public class LobbyService {
 
 			playerService.addPlayer(lobby.getId(), sessionId);
 			messagingTemplate.convertAndSend("/queue/lobbies/join/" + sessionId, new LobbyIdResponse(lobby.getId()));
+			log.info("JOIN RESPONSE SENT OUT FOR SESSIONID {} LOBBYID {}", sessionId, lobby.getId());
 
 		}
 	}

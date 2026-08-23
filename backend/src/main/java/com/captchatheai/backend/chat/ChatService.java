@@ -88,9 +88,17 @@ public class ChatService {
 						+ ", Send Chat Denied: Message is over " + MAX_CHAT_LENGTH + " characters or is blank.");
 			}
 			// Make sure that the player's chat cooldown has finished
+
 			if (player.getLastChatTime() != null
 					&& Instant.now().isBefore(player.getLastChatTime().plusSeconds(CHAT_COOLDOWN_DURATION))) {
 
+				double timeLeftOnCooldown = (Duration
+						.between(Instant.now(), player.getLastChatTime().plusSeconds(CHAT_COOLDOWN_DURATION)).toMillis()
+						/ 100) / 10.0;
+
+				messagingTemplate.convertAndSend(
+						"/queue/lobbies/" + lobbyId + "/chat-messages/errors/" + player.getSessionId(),
+						new ChatCooldownErrorResponse(timeLeftOnCooldown));
 				throw new ChatCooldownException("Lobby Id: " + lobbyId + ", Player Id: " + playerId
 						+ ", Send Chat Denied: Player cooldown has not ended yet.");
 			}

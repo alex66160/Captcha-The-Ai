@@ -129,7 +129,7 @@ public class PlayerService {
 			// record.
 			List<PlayerState> players = playerIds.stream().map((playerIdFromPlayerIds) -> {
 				Player player = playerLookup.getPlayerById(lobbyId, playerIdFromPlayerIds);
-				return new PlayerState(player.getName(), player.getAvatar(),
+				return new PlayerState(player.getName(), player.getAvatar(), player.getStatus(),
 						playerId.equals(lobby.getQuestionWriterId()), player.getId().equals(playerId));
 
 			}).toList();

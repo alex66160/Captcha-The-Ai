@@ -6,9 +6,11 @@ package com.captchatheai.backend.player;
  * @author Alex Liu
  * @param playerName       the name of the player
  * @param playerAvatar     the avatar of the player
+ * @param playerStatus     the status of the player
  * @param isQuestionWriter whether or not the player is the question writer
  * @param isSelf           whether or not the player is themself
  */
-public record PlayerState(String playerName, PlayerAvatar playerAvatar, boolean isQuestionWriter, boolean isSelf) {
+public record PlayerState(String playerName, PlayerAvatar playerAvatar, PlayerStatus playerStatus,
+		boolean isQuestionWriter, boolean isSelf) {
 
 }

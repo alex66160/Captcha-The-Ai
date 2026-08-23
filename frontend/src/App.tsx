@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./components/Home";
-//import LobbyStateProvider from "./components/LobbyStateProvider";
-
+import LobbyContextProvider from "./components/LobbyContextProvider";
+import Lobby from "./components/Lobby";
 /**
  * The frontend of the application.
  * @author Alex Liu
@@ -15,7 +15,11 @@ function App() {
 
                 <Route
                     path="/:lobbyId"
-                    element={<p>navigated to lobby id</p>}
+                    element={
+                        <LobbyContextProvider>
+                            <Lobby />
+                        </LobbyContextProvider>
+                    }
                 />
             </Routes>
         </BrowserRouter>

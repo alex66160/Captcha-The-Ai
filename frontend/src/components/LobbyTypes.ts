@@ -53,9 +53,12 @@ export type PlayerAvatar =
     | "SPECTATOR"
     | "HIDDEN";
 
+export type PlayerStatus = "HIDDEN" | "ALIVE" | "SPECTATOR" | "DISCONNECTED";
+
 export type PlayerState = {
     playerName: string;
     playerAvatar: PlayerAvatar;
+    playerStatus: PlayerStatus;
     isQuestionWriter: boolean;
     isSelf: boolean;
 };
@@ -66,3 +69,5 @@ export type LobbyState = {
     roundCount: number;
     players: PlayerState[];
 };
+
+

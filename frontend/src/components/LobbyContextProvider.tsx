@@ -1,14 +1,12 @@
-import { useState, createContext, useEffect, type ReactNode } from "react";
-import { useLocation } from "react-router-dom";
+import { useState, useEffect, type ReactNode } from "react";
+import { useParams } from "react-router-dom";
 import { type IMessage, type StompSubscription } from "@stomp/stompjs";
 import { subscribe, getSessionId, publish } from "./StompActions.ts";
 import { type LobbyState } from "./LobbyTypes.ts";
+import { lobbyContext } from "./LobbyContext.ts";
 
-const lobbyContext = createContext<LobbyState | null>(null);
-
-function LobbyStateProvider({ children }: { children: ReactNode }) {
-    const location = useLocation();
-    const lobbyId = location.pathname;
+function LobbyContextProvider({ children }: { children: ReactNode }) {
+    const lobbyId = useParams().lobbyId;
 
     const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
 
@@ -18,11 +16,13 @@ function LobbyStateProvider({ children }: { children: ReactNode }) {
         lobbyStateSubscription = subscribe(
             `/queue/lobbies/${lobbyId}/state/${getSessionId()}`,
             (message: IMessage) => {
+                console.log("STATE SUSCRIPTION WENT THROUGH");
                 setLobbyState(JSON.parse(message.body));
             },
         );
 
-        publish<null>(`app/lobbies/${lobbyId}/state`, null);
+        publish<null>(`/app/lobbies/${lobbyId}/state`, null);
+        console.log("STATE PUBLISH WENT THROUGH");
 
         return () => {
             lobbyStateSubscription?.unsubscribe();
@@ -36,4 +36,4 @@ function LobbyStateProvider({ children }: { children: ReactNode }) {
     );
 }
 
-export default LobbyStateProvider;
+export default LobbyContextProvider;

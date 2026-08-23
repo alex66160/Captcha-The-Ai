@@ -132,6 +132,7 @@ public class PhaseExpiredHandler {
 		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			playerService.assignPlayerIdentities(lobbyId);
+			lobby.setGameStartTime(Instant.now());
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.INTRO);
 		}
 	}
