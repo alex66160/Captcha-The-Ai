@@ -71,7 +71,7 @@ public class LobbyService {
 	public void broadcastTotalPlayerCountAndLobbyCount() {
 		int totalPlayerCount = lobbyRepository.findAll().stream().mapToInt((lobby) -> lobby.getPlayerCount()).sum();
 		int totalLobbyCount = (int) lobbyRepository.findAll().stream().count();
-		messagingTemplate.convertAndSend("topic/stats", new StatsBroadcast(totalPlayerCount, totalLobbyCount));
+		messagingTemplate.convertAndSend("/topic/stats", new StatsBroadcast(totalPlayerCount, totalLobbyCount));
 	}
 
 	/**

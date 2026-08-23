@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { useParams } from "react-router-dom";
 import { subscribe, publish, getSessionId } from "./StompActions.ts";
-import { useLobbyContext } from "./LobbyContext.ts";
+import { lobbyContext } from "./LobbyContext.ts";
 import { type StompSubscription } from "@stomp/stompjs";
 
 type SendChatMessageCommand = { message: string };
@@ -18,7 +18,7 @@ function ChatBox() {
     const [messageToSend, setMessageToSend] = useState("");
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
-    const lobbyState = useLobbyContext();
+    const lobbyState = useContext(lobbyContext);
 
     if (lobbyState === null) {
         throw new Error("Lobby state is not supposed to be null");

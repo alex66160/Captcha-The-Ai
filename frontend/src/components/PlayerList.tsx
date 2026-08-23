@@ -1,8 +1,9 @@
-import { useLobbyContext } from "./LobbyContext.ts";
+import { lobbyContext } from "./LobbyContext.ts";
+import { useContext } from "react";
 import { type PlayerState } from "./LobbyTypes.ts";
 
 function PlayerList() {
-    const lobbyState = useLobbyContext();
+    const lobbyState = useContext(lobbyContext);
     if (lobbyState === null) {
         throw new Error("Lobby state is not supposed to be null");
     }

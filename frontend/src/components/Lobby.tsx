@@ -3,10 +3,11 @@ import GameScreen from "./GameScreen";
 import ChatBox from "./ChatBox";
 import Stats from "./Stats";
 import LoadingScreen from "./LoadingScreen";
-import { useLobbyContext } from "./LobbyContext";
+import { lobbyContext } from "./LobbyContext";
+import { useContext } from "react";
 
 function Lobby() {
-    const lobbyState = useLobbyContext();
+    const lobbyState = useContext(lobbyContext);
 
     return lobbyState === null ? (
         <LoadingScreen />
