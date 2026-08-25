@@ -3,6 +3,7 @@ import GameScreen from "./GameScreen";
 import ChatBox from "./ChatBox";
 import Stats from "./Stats";
 import LoadingScreen from "./LoadingScreen";
+import Header from "./Header";
 import { lobbyContext } from "./LobbyContext";
 import { useContext } from "react";
 
@@ -13,6 +14,7 @@ function Lobby() {
         <LoadingScreen />
     ) : (
         <div>
+            <Header />
             <PlayerList />
             <GameScreen />
             <ChatBox />
