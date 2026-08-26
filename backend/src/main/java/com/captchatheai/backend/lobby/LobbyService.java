@@ -385,12 +385,13 @@ public class LobbyService {
 	public void transitionToPhase(int lobbyId, LobbyPhase phase) {
 		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
+			LobbyPhase oldPhase = lobby.getPhase();
 			lobby.setPhase(phase);
 			lobby.setPhaseEndTime(Instant.now().plusSeconds(phase.getDuration()));
 			broadcastLobbyState(lobbyId);
 			log.info(
 					"Lobby Id: {}, Lobby Round: {}, Old Lobby Phase: {}, New Lobby Phase: {}, Lobby has successfully transitioned phases.",
-					lobbyId, lobby.getRoundCount(), phase, lobby.getPhase());
+					lobbyId, lobby.getRoundCount(), oldPhase, lobby.getPhase());
 		}
 	}
 

@@ -147,7 +147,7 @@ public class PhaseExpiredHandler {
 		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			questionService.setNextQuestionWriter(lobbyId);
-
+			log.info("QUESTION WRITER IN HANDLE INTRO EXPIRED IS: {}", lobby.getQuestionWriterId());
 			lobbyService.transitionToPhase(lobbyId, LobbyPhase.QUESTION_ANNOUNCEMENT);
 		}
 	}

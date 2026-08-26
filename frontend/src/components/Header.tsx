@@ -7,11 +7,11 @@ function Header() {
         throw new Error("Lobby State was null in Header.");
     }
 
-    const [phaseEndTime, setPhaseEndTime] = useState(0);
-    const [headerMessage, setHeaderMessage] = useState("");
+    const [secondsLeftForPhase, setSecondsLeftForPhase] = useState(0);
+
     useEffect(() => {
         const phaseEndTimeInterval = setInterval(() => {
-            setPhaseEndTime(
+            setSecondsLeftForPhase(
                 Math.max(
                     0,
                     Math.ceil(
@@ -27,19 +27,24 @@ function Header() {
             clearInterval(phaseEndTimeInterval);
         };
     }, [lobbyState.phaseEndTime]);
+    let headerMessage = "";
 
-    if (lobbyState.lobbyPhase === "STARTING") {
-        setHeaderMessage(`Game begins in ${phaseEndTime} seconds`);
-    } else if (lobbyState.lobbyPhase === "QUESTION") {
-        setHeaderMessage(`Question writing ends in ${phaseEndTime} seconds`);
-    } else if (lobbyState.lobbyPhase === "ANSWER") {
-        setHeaderMessage(`Answer writing ends in ${phaseEndTime} seconds`);
-    } else if (lobbyState.lobbyPhase === "DISCUSS") {
-        setHeaderMessage(`Discussion ends in ${phaseEndTime} seconds`);
-    } else if (lobbyState.lobbyPhase === "VOTING") {
-        setHeaderMessage(`Voting ends in ${phaseEndTime} seconds`);
-    } else {
-        setHeaderMessage("");
+    switch (lobbyState.lobbyPhase) {
+        case "STARTING":
+            headerMessage = `Game begins in ${secondsLeftForPhase} seconds`;
+            break;
+        case "QUESTION":
+            headerMessage = `Question writing ends in ${secondsLeftForPhase} seconds`;
+            break;
+        case "ANSWER":
+            headerMessage = `Answer writing ends in ${secondsLeftForPhase} seconds`;
+            break;
+        case "DISCUSS":
+            headerMessage = `Discussion ends in ${secondsLeftForPhase} seconds`;
+            break;
+        case "VOTING":
+            headerMessage = `Voting ends in ${secondsLeftForPhase} seconds`;
+            break;
     }
 
     return (

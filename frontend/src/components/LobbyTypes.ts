@@ -70,4 +70,10 @@ export type LobbyState = {
     players: PlayerState[];
 };
 
+export type EliminatedPlayerResponse = {
+    playerName: string;
+    playerAvatar: PlayerAvatar;
+    isAi: boolean;
+}
+
 
