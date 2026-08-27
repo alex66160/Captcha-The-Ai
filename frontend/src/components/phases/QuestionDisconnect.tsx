@@ -7,7 +7,8 @@ import { type EliminatedPlayerResponse } from "../LobbyTypes";
 function QuestionDisconnect() {
     const lobbyState = useContext(lobbyContext);
     const lobbyId = useParams().lobbyId;
-    const [oldQuestionWriterName, setOldQuestionWriterName] = useState("");
+    const [eliminatedPlayerResponse, setEliminatedPlayerResponse] =
+        useState<EliminatedPlayerResponse | null>(null);
     if (lobbyState === null) {
         throw new Error("Lobby state was null in question disconnect.");
     }
@@ -21,15 +22,13 @@ function QuestionDisconnect() {
 
     useEffect(() => {
         getEliminatedPlayer(lobbyId).then((response) => {
-            const eliminatedPlayerResponse: EliminatedPlayerResponse =
-                response.data;
-            setOldQuestionWriterName(eliminatedPlayerResponse.playerName);
+            setEliminatedPlayerResponse(response.data);
         });
     }, [lobbyId]);
 
-    return (
+    return eliminatedPlayerResponse === null ? null : (
         <p>
-            {oldQuestionWriterName} disconnected,
+            {eliminatedPlayerResponse.playerName} disconnected,
             {questionWriter.playerName} will be writing the next question1
         </p>
     );

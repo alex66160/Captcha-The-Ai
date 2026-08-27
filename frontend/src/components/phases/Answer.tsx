@@ -1,18 +1,34 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { lobbyContext } from "../LobbyContext";
 import { publish } from "../StompActions";
 import { useParams } from "react-router-dom";
+import { getQuestion } from "../LobbyService";
+
+import { type QuestionResponse } from "../LobbyTypes";
 
 type SubmitAnswerRequest = { answer: string };
 
 function Answer() {
     const lobbyState = useContext(lobbyContext);
-    const lobbyId = useParams().lobbyId;
-    const [answer, setAnswer] = useState("");
-    const [isSubmitted, setIsSubmitted] = useState(false);
     if (lobbyState === null) {
         throw new Error("Lobby state was null in answer component");
     }
+    const lobbyId = useParams().lobbyId;
+    if (lobbyId === undefined) {
+        throw new Error("Lobby id was undefined in answer component");
+    }
+    const [answer, setAnswer] = useState("");
+    const [isSubmitted, setIsSubmitted] = useState(false);
+
+    const [questionResponse, setQuestionResponse] =
+        useState<QuestionResponse | null>(null);
+
+    useEffect(() => {
+        getQuestion(lobbyId).then((response) => {
+            setQuestionResponse(response.data);
+        });
+    }, [lobbyId]);
+
     const selfPlayer = lobbyState.players.filter((player) => player.isSelf)[0];
 
     if (selfPlayer.isQuestionWriter && selfPlayer.playerStatus === "ALIVE") {
@@ -20,8 +36,13 @@ function Answer() {
     }
 
     if (!selfPlayer.isQuestionWriter && selfPlayer.playerStatus === "ALIVE") {
-        return (
+        return questionResponse === null ? null : (
             <div>
+                <p>
+                    {questionResponse.playerAvatar}{" "}
+                    {questionResponse.playerName} wrote:{" "}
+                    {questionResponse.question}
+                </p>
                 <form
                     onSubmit={(event) => {
                         event.preventDefault();
@@ -51,7 +72,17 @@ function Answer() {
     }
 
     if (selfPlayer.playerStatus === "SPECTATOR") {
-        return <p>Players are currently answering the question...</p>;
+        return questionResponse === null ? null : (
+            <div>
+                <p>
+                    {questionResponse.playerAvatar}{" "}
+                    {questionResponse.playerName} wrote:{" "}
+                    {questionResponse.question}
+                </p>
+
+                <p>Players are currently answering the question...</p>
+            </div>
+        );
     }
 }
 

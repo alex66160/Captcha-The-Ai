@@ -76,4 +76,8 @@ export type EliminatedPlayerResponse = {
     isAi: boolean;
 }
 
+export type QuestionResponse = {playerName: string, playerAvatar: PlayerAvatar, question: string}
+export type AnswerResponse = {playerName: string, playerAvatar: PlayerAvatar, answer: string}
+export type AnswersResponse = {answers: AnswerResponse[]}
+
 

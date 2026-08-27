@@ -12,9 +12,7 @@ function PlayerList() {
     return (
         <div>
             {players.map((player) => (
-                <div>
-                    <p>{player.playerName}</p>
-                </div>
+                <p key={player.playerName}>{player.playerName}</p>
             ))}
         </div>
     );
