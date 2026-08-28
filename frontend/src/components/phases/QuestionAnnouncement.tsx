@@ -1,6 +1,10 @@
 import { lobbyContext } from "../LobbyContext";
 import { useContext } from "react";
 
+/**
+ * The QuestionAnnouncement component shows a message to let players know who is writing the question.
+ * @author Alex Liu
+ */
 function QuestionAnnouncement() {
     const lobbyState = useContext(lobbyContext);
     if (lobbyState === null) {

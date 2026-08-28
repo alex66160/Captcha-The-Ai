@@ -1,6 +1,10 @@
 import { useContext } from "react";
 import { lobbyContext } from "../LobbyContext";
 
+/**
+ * The Intro component displays the players self identity through their name and player avatar.
+ * @author Alex Liu
+ */
 function Intro() {
     const lobbyState = useContext(lobbyContext);
     if (lobbyState === null) {

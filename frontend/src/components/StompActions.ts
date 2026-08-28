@@ -14,6 +14,7 @@ let sessionId: string | null = null;
 
 /**
  * The connect function connects to the backend, and then runs a given callback.
+ * @author Alex Liu
  * @param callback the behavior to run after connecting
  * @throws Error if attempting to connect while already connected
  */
@@ -26,12 +27,14 @@ export function connect(callback: () => void): void {
         // Backend url for the stomp websocket connection
         brokerURL: "ws://localhost:8080/ws",
         onConnect: () => {
-           console.log("CONNECTED");
+            // Because the backend does NOT send the sessionId on the connect frame, we need to get it ourselves from the backend.
+            // Make a client side UUID so that the backend has somewhere to send the sessionId, and we need to use a stomp SEND so
+            // that the backend can get the sessionId from the header with a header accessor and send it back to the frontend.
             const throwawayUUID = crypto.randomUUID();
             subscribe(`/queue/session-id/${throwawayUUID}`, (message: IMessage) => {
                 const sessionIdResponse: SessionIdResponse = JSON.parse(message.body);
                 sessionId = sessionIdResponse.sessionId;
-                console.log("sessionId: " + sessionId);
+                // Run our callback once we have the sessionId since it depends on it.
                 callback();
             })
 
@@ -51,6 +54,7 @@ export function connect(callback: () => void): void {
  * The subscribe function allows the user to subscribe to a destination and provide a callback to run when messages are
  * published to that destination. The user is responsible for storing the StompSubscription when calling this function, so
  * that they can unsubscribe.
+ * @author Alex Liu
  * @param destination the destination to subscribe to
  * @param callback the behavior to run whenever something is published to that destination
  * @returns the subscription that was created
@@ -66,38 +70,10 @@ export function subscribe(destination: string, callback: (message: IMessage) => 
     return client.subscribe(destination, callback);
 }
 
-// /**
-//  * The subscribeAndWait function allows the user to subscribe to a destination and provide a callback to run when messages are
-//  * published to that destination, and the user is responsible for storing the StompSubscription if its successful so that they can manage
-//  * the unsubscribe. In addition, it makes sure that the subscribe finished before returning, unlike the other subscribe function.
-//  * @param destination the destination to subscribe to
-//  * @param callback  the behavior to run whenever something is published to that destination
-//  * @returns the promise which contains the subscription that was created
-//  * @throws Error if attempting to subscribe without a connection
-//  */
-// export function subscribeAndWait(destination: string, callback: (message: IMessage) => void): Promise<StompSubscription>  {
-//     console.log("ENTERED SUBSCRIBE AND WAIT " + destination);
-//    return new Promise((resolve) => {
-//         if (client === null) {
-//             throw new Error("Attempted to subscribe to destination: " + destination + " while disconnected.");
-//         }
-//         // The receipt to attatch to the subscribe so we have a way of knowing when its finished
-//         const receipt = crypto.randomUUID();
-
-//         // Monitor receipt before subscribing so that we don't accidently have a race condition where
-//         // it subscribes before receipt monitor starts
-//         client.watchForReceipt(receipt, () => {
-//             resolve(subscription)
-//         });
-//         const subscription = client.subscribe(destination, callback, {receipt: receipt});
-//     }
-
-//     );
-// }
-
 
 /**
  * The publish function allows the user to publish data to a destination.
+ * @author Alex Liu
  * @template T the type of the data thats in the message to be published
  * @param destination the destination to publish to
  * @param data the actual data being sent over thats wrapped in the message
@@ -115,6 +91,7 @@ export function publish<T>(destination: string, data: T): void {
 
 /**
  * The disconnect function allows the user to disconnect from the backend.
+ * @author Alex Liu
  * @throws Error if attempting to disconnect while already disconnected
  */
 export function disconnect(): void {
@@ -133,6 +110,7 @@ export function disconnect(): void {
 
 /**
  * The getSessionId function returns the users session Id for that connected session.
+ * @author Alex Liu
  * @returns the users sessionId
  * @throws Error if attempting to get a null session id or if getting sessionId while already disconnected
  */

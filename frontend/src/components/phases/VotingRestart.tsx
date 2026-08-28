@@ -4,6 +4,10 @@ import { useParams } from "react-router-dom";
 import { getEliminatedPlayer } from "../LobbyService";
 import { type EliminatedPlayerResponse } from "../LobbyTypes";
 
+/**
+ * The VotingRestart component displays a message to let players know which player left that caused the voting to restart.
+ * @author Alex Liu
+ */
 function VotingRestart() {
     const lobbyState = useContext(lobbyContext);
     const lobbyId = useParams().lobbyId;

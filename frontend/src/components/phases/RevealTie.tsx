@@ -10,6 +10,10 @@ type TiedPlayerResponse = {
 };
 type TiedPlayersResponse = { tiedPlayers: TiedPlayerResponse[] };
 
+/**
+ * The RevealTie component shows the tied players after the reveal.
+ * @author Alex Liu
+ */
 function RevealTie() {
     const lobbyId = useParams().lobbyId;
     if (lobbyId === undefined) {
@@ -27,7 +31,7 @@ function RevealTie() {
 
     return tiedPlayersResponse === null ? null : (
         <div>
-            <p>There is a tie between...</p>
+            <p>There is a tie between:</p>
             {tiedPlayersResponse.tiedPlayers.map(
                 (tiedPlayerResponse, index) => (
                     <p key={index}>
@@ -36,6 +40,7 @@ function RevealTie() {
                     </p>
                 ),
             )}
+            <p> One unlucky player will be eliminated...</p>
         </div>
     );
 }

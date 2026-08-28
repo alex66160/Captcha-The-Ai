@@ -7,6 +7,10 @@ import { getAiPlayer } from "../LobbyService";
 
 type AiPlayerResponse = { playerName: string; playerAvatar: PlayerAvatar };
 
+/**
+ * The GameResult component displays the result of a game such as players winning or the ai winning.
+ * @author Alex Liu
+ */
 function GameResult() {
     const lobbyState = useContext(lobbyContext);
     const lobbyId = useParams().lobbyId;
@@ -25,6 +29,7 @@ function GameResult() {
         });
     }, [lobbyId]);
 
+    // Display a different game result message depending on which game result phase it is.
     let gameResultMessage = "";
     switch (lobbyState.lobbyPhase) {
         case "AI_PLAYER_WON":

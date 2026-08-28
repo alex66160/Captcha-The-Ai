@@ -11,6 +11,10 @@ type VoteTargetResponse = {
 };
 type VotesResponse = { voteTargets: VoteTargetResponse[] };
 
+/**
+ * The Reveal component reveals all the votes and shows which player voted for whom.
+ * @author Alex Liu
+ */
 function Reveal() {
     const [votesResponse, setVotesResponse] = useState<VotesResponse | null>(
         null,
@@ -23,6 +27,8 @@ function Reveal() {
         getVotes(lobbyId).then((response) => setVotesResponse(response.data));
     }, [lobbyId]);
 
+    // Might look a little confusing but keep in mind that we go through the voteTargets list and for each voteTarget,
+    // we display the list of voters that voted for that vote target.
     return votesResponse === null
         ? null
         : votesResponse.voteTargets.map((voteTargetResponse, index) => (

@@ -5,7 +5,6 @@ import Lobby from "./components/Lobby";
 /**
  * The frontend of the application.
  * @author Alex Liu
- * @returns the frontend
  */
 function App() {
     return (

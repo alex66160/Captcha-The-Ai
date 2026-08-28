@@ -12,11 +12,17 @@ type LobbyErrorType =
     | "LOBBY_INCORRECT_PASSWORD";
 type LobbyErrorTypeResponse = { lobbyErrorType: LobbyErrorType };
 
+/**
+ * The Home component allows players to join a random lobby, join a lobby by its lobby id, and create a lobby.
+ * @author Alex Liu
+ */
 function Home() {
     const location = useLocation();
     const [lobbyIdToJoin, setLobbyIdToJoin] = useState("");
     const [lobbyPassword, setLobbyPassword] = useState("");
 
+    // location.state represents the initial message to display when players get kicked and are navigated
+    // back to the Home component. Otherwise location.state will just be null.
     const [message, setMessage] = useState<string | null>(location.state);
 
     const [displayJoinLobbyByIdForm, setDisplayJoinLobbyByIdForm] =
@@ -24,6 +30,14 @@ function Home() {
     const [displayCreateLobbyForm, setDisplayCreateLobbyForm] = useState(false);
 
     const navigate = useNavigate();
+
+    // The next three arrow functions will follow a similar pattern of setting up a subscribe for
+    // the lobbyId response, and navigating to the lobbyId page once we recieve it after we make a publish
+    // to join/create the lobby.
+
+    // The reason we use stomp instead of restapi here is so that the backend
+    // can extract the sessionId from the header to know who sent the join/create instead of us having to
+    // manually insert the sessionId or needing to use some other kind of authentication.
 
     const joinRandomLobby = () => {
         const lobbyIdSubscription = subscribe(
@@ -51,7 +65,9 @@ function Home() {
                 lobbyIdSubscription.unsubscribe();
             },
         );
-
+        // Since the user could join a lobby thats full, type an incorrect password, or enter
+        // a lobby id for a lobby that doesn't exist, we need to be able to recieve errors
+        // from the backend when it happens and let the user know.
         const lobbyErrorSubscription = subscribe(
             `/queue/lobbies/errors/${getSessionId()}`,
             (message) => {
@@ -83,24 +99,20 @@ function Home() {
     };
 
     const createLobby = () => {
-        console.log("ASDFASDFASDF");
         const lobbyIdSubscription = subscribe(
             `/queue/lobbies/join/${getSessionId()}`,
             (message) => {
                 const lobbyIdResponse: LobbyIdResponse = JSON.parse(
                     message.body,
                 );
-                console.log(
-                    "Lobby id that connected: " + lobbyIdResponse.lobbyId,
-                );
+
                 navigate(`/${lobbyIdResponse.lobbyId}`);
                 lobbyIdSubscription.unsubscribe();
             },
         );
         const createLobbyRequest: CreateLobbyRequest = { lobbyPassword };
-        console.log("CREATE LOBBY REQUEST WAS SENT 1");
+
         publish<CreateLobbyRequest>("/app/lobbies/create", createLobbyRequest);
-        console.log("CREATE LOBBY REQUEST WAS SENT 2");
     };
 
     return (

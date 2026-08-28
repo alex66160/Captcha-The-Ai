@@ -4,6 +4,10 @@ import { useParams } from "react-router-dom";
 import { type QuestionResponse, type AnswersResponse } from "../LobbyTypes";
 import { getQuestion, getAnswers } from "../LobbyService";
 
+/**
+ * The Discuss component displays the written question and all of the players answers.
+ * @author Alex Liu
+ */
 function Discuss() {
     const lobbyState = useContext(lobbyContext);
     if (lobbyState === null) {

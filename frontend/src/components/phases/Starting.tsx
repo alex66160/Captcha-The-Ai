@@ -5,10 +5,15 @@ const tutorialSlides = [
     "Work with other players to figure out who the Ai player is, and vote them out to win! Good luck!",
 ];
 
+/**
+ * The Starting component displays the tutorial slides for the game.
+ * @author Alex Liu
+ */
 function Starting() {
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
     useEffect(() => {
+        // Use setInterval to go to the next slide every 5 seconds.
         const nextSlideInterval = setInterval(() => {
             setCurrentSlideIndex((prev) => (prev + 1) % tutorialSlides.length);
         }, 5000);
@@ -16,6 +21,9 @@ function Starting() {
         return () => {
             clearInterval(nextSlideInterval);
         };
+        // We store the currentSlideIndex in the dependency array so that when the user changes the slide
+        // it'll automatically tear down the interval and create a new one. This will guarantee it'll be 5 seconds
+        // before the next slide changes again.
     }, [currentSlideIndex]);
 
     return (

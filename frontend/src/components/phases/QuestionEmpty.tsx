@@ -3,10 +3,14 @@ import { useContext, useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { getEliminatedPlayer } from "../LobbyService";
 import { type EliminatedPlayerResponse } from "../LobbyTypes";
-
+/**
+ * The QuestionEmpty component displays the current question writer who forgot to write a question and who the next question writer will be.
+ * @author Alex Liu
+ */
 function QuestionEmpty() {
     const lobbyState = useContext(lobbyContext);
     const lobbyId = useParams().lobbyId;
+    // The eliminated player is the question writer that forgot to write a question.
     const [eliminatedPlayerResponse, setEliminatedPlayerResponse] =
         useState<EliminatedPlayerResponse | null>(null);
     if (lobbyState === null) {

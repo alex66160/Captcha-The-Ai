@@ -8,6 +8,11 @@ import { type QuestionResponse } from "../LobbyTypes";
 
 type SubmitAnswerRequest = { answer: string };
 
+/**
+ * The answer components displays the question asked and allows players to submit answers for that
+ * question.
+ * @author Alex Liu
+ */
 function Answer() {
     const lobbyState = useContext(lobbyContext);
     if (lobbyState === null) {
@@ -29,6 +34,7 @@ function Answer() {
         });
     }, [lobbyId]);
 
+    // Get the self identity of the player so we know what to display.
     const selfPlayer = lobbyState.players.filter((player) => player.isSelf)[0];
 
     if (selfPlayer.isQuestionWriter && selfPlayer.playerStatus === "ALIVE") {

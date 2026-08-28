@@ -20,6 +20,10 @@ import RevealTie from "./phases/RevealTie";
 import Elimination from "./phases/Elimination";
 import GameResult from "./phases/GameResult";
 
+/**
+ * The GameScreen component determines which phase component to show depending on which lobbyPhase it currently is.
+ * @author Alex Liu
+ */
 function GameScreen() {
     const lobbyState = useContext(lobbyContext);
 
@@ -79,6 +83,9 @@ function GameScreen() {
         case "ELIMINATION":
             return <Elimination />;
             break;
+        // You may notice that these 4 phases map to the same component, and this is because
+        // the only thing different is the message displayed in the game result, so I made one component
+        // instead of 4 different components for this.
         case "AI_PLAYER_WON":
             return <GameResult />;
             break;

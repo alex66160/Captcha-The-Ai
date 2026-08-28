@@ -4,6 +4,11 @@ import { useParams } from "react-router-dom";
 import { getEliminatedPlayer } from "../LobbyService";
 import { type EliminatedPlayerResponse } from "../LobbyTypes";
 
+/**
+ * The Elimination component displays the player that was voted out, and whether or not that player was
+ * the ai.
+ * @author Alex Liu
+ */
 function Elimination() {
     const lobbyState = useContext(lobbyContext);
     const lobbyId = useParams().lobbyId;

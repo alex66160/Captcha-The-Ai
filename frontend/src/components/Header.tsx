@@ -3,6 +3,11 @@ import { lobbyContext } from "./LobbyContext";
 import { useParams, useNavigate } from "react-router-dom";
 import { publish, disconnect } from "./StompActions";
 
+/**
+ * The Header component is responsible for showing the header message which contains the seconds left for certain phases,
+ * the round count, as well as allowing players to leave a lobby.
+ * @author Alex Liu
+ */
 function Header() {
     const lobbyState = useContext(lobbyContext);
     const lobbyId = useParams().lobbyId;
@@ -19,6 +24,12 @@ function Header() {
     useEffect(() => {
         const phaseEndTimeInterval = setInterval(() => {
             setSecondsLeftForPhase(
+                // We use math.max to avoid negative times (sometimes the timer may go over by a second),
+                // and we use math.ceil to reduce the chances of the timer staying at zero for longer than a second.
+
+                // The reason we dont do something like subtracting 1 to the secondsLeftForPhase after every second is so that
+                // our timer doesnt drift due to inaccuracies, so we calculate it fresh every second from the phase end time to the current time
+                // to make sure its as accurate as possible.
                 Math.max(
                     0,
                     Math.ceil(

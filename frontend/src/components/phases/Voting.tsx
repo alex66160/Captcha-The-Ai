@@ -7,6 +7,11 @@ import { publish } from "../StompActions";
 
 type SubmitVoteRequest = { voteTargetName: string };
 
+/**
+ * The Voting component allows players to vote for another player by clicking on that
+ * players displayed question or answer.
+ * @author Alex Liu
+ */
 function Voting() {
     const lobbyState = useContext(lobbyContext);
     const [isSubmitted, setIsSubmitted] = useState(false);
