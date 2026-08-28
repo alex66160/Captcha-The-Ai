@@ -1,30 +1,30 @@
 
 import axios from "axios";
 
-
+const backendURL = "http://localhost:8080";
 
 export function getEliminatedPlayer(lobbyId: string) {
 
-    return axios.get(`/api/lobbies/${lobbyId}/eliminated-player`);
+    return axios.get(`${backendURL}/api/lobbies/${lobbyId}/eliminated-player`);
 }
 
 
 export function getQuestion(lobbyId: string) {
-    return axios.get(`/api/lobbies/${lobbyId}/question`)
+    return axios.get(`${backendURL}/api/lobbies/${lobbyId}/question`)
 }
 
 export function getAnswers(lobbyId: string) {
-    return axios.get(`/api/lobbies/${lobbyId}/answers`)
+    return axios.get(`${backendURL}/api/lobbies/${lobbyId}/answers`)
 }
 
 export function getVotes(lobbyId :string) {
-    return axios.get(`/api/lobbies/${lobbyId}/votes`);
+    return axios.get(`${backendURL}/api/lobbies/${lobbyId}/votes`);
 }
 
 export function getTiedPlayers(lobbyId: string) {
-    return axios.get(`/api/lobbies/${lobbyId}/tied-players`);
+    return axios.get(`${backendURL}/api/lobbies/${lobbyId}/tied-players`);
 }
 
 export function getAiPlayer(lobbyId: string) {
-    return axios.get(`/api/lobbies/${lobbyId}/ai-player`);
+    return axios.get(`${backendURL}/api/lobbies/${lobbyId}/ai-player`);
 }

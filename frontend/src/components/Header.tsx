@@ -1,10 +1,17 @@
 import { useContext, useState, useEffect } from "react";
 import { lobbyContext } from "./LobbyContext";
+import { useParams, useNavigate } from "react-router-dom";
+import { publish, disconnect } from "./StompActions";
 
 function Header() {
     const lobbyState = useContext(lobbyContext);
+    const lobbyId = useParams().lobbyId;
+    const navigate = useNavigate();
     if (lobbyState === null) {
         throw new Error("Lobby State was null in Header.");
+    }
+    if (lobbyId === undefined) {
+        throw new Error("Lobby id was undefined in header.");
     }
 
     const [secondsLeftForPhase, setSecondsLeftForPhase] = useState(0);
@@ -45,10 +52,32 @@ function Header() {
         case "VOTING":
             headerMessage = `Voting ends in ${secondsLeftForPhase} seconds`;
             break;
+        case "AI_PLAYER_WON":
+            headerMessage = `Next game begins in ${secondsLeftForPhase} seconds`;
+            break;
+        case "AI_PLAYER_FAILED_TO_RESPOND":
+            headerMessage = `Game restarts in ${secondsLeftForPhase} seconds`;
+            break;
+        case "HUMAN_PLAYERS_WON":
+            headerMessage = `Game restarts in ${secondsLeftForPhase} seconds`;
+            break;
+        case "NOT_ENOUGH_PLAYERS":
+            headerMessage = `Game restarts in ${secondsLeftForPhase} seconds`;
+            break;
     }
 
     return (
         <div>
+            <button
+                onClick={() => {
+                    publish<null>(`/api/lobbies/${lobbyId}/leave`, null);
+                    disconnect();
+                    navigate("/");
+                }}
+            >
+                leave lobby
+            </button>
+
             <p> Round count: {lobbyState.roundCount}</p>
             <p>{headerMessage}</p>
         </div>

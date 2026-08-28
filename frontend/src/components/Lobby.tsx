@@ -5,10 +5,25 @@ import Stats from "./Stats";
 import LoadingScreen from "./LoadingScreen";
 import Header from "./Header";
 import { lobbyContext } from "./LobbyContext";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
+import { subscribe, getSessionId, disconnect } from "./StompActions";
+import { useParams, useNavigate } from "react-router-dom";
 
 function Lobby() {
     const lobbyState = useContext(lobbyContext);
+    const lobbyId = useParams().lobbyId;
+    const navigate = useNavigate();
+    useEffect(() => {
+        subscribe(
+            `/api/lobbies/${lobbyId}/disconnect/${getSessionId()}`,
+            () => {
+                disconnect();
+                navigate("/", {
+                    state: "You were kicked from the lobby for being AFK.",
+                });
+            },
+        );
+    }, [lobbyId, navigate]);
 
     return lobbyState === null ? (
         <LoadingScreen />

@@ -112,14 +112,14 @@ public class LobbyService {
 	 */
 	public void getLobbyState(int lobbyId, String sessionId) {
 		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
+		synchronized (lobby) {
+			UUID playerId = playerLookup.getPlayerIdBySessionId(lobbyId, sessionId);
 
-		UUID playerId = playerLookup.getPlayerIdBySessionId(lobbyId, sessionId);
+			LobbyState lobbyState = new LobbyState(lobby.getPhase(), lobby.getPhaseEndTime(), lobby.getRoundCount(),
+					playerService.getPlayers(lobbyId, playerId));
 
-		LobbyState lobbyState = new LobbyState(lobby.getPhase(), lobby.getPhaseEndTime(), lobby.getRoundCount(),
-				playerService.getPlayers(lobbyId, playerId));
-
-		messagingTemplate.convertAndSend("/queue/lobbies/" + lobbyId + "/state/" + sessionId, lobbyState);
-		log.info("LOBBY STATE SENT OUT FOR SESSIONID: {}", sessionId);
+			messagingTemplate.convertAndSend("/queue/lobbies/" + lobbyId + "/state/" + sessionId, lobbyState);
+		}
 
 	}
 
@@ -164,7 +164,7 @@ public class LobbyService {
 			Lobby lobbyToJoin;
 			// If no available lobbies exist, just make a new one.
 			if (lobbiesToJoin.isEmpty()) {
-				log.info("NO LOBBIES AVAILABL CREATING NEW ONE{}", sessionId);
+
 				createLobby(sessionId, null);
 				break;
 
@@ -194,7 +194,7 @@ public class LobbyService {
 				playerService.addPlayer(lobbyToJoin.getId(), sessionId);
 				messagingTemplate.convertAndSend("/queue/lobbies/join/" + sessionId,
 						new LobbyIdResponse(lobbyToJoin.getId()));
-				log.info("JOIN RESPONSE SENT OUT FOR SESSIONID {} LOBBYID {}", sessionId, lobbyToJoin.getId());
+
 				break;
 
 			}
@@ -257,7 +257,6 @@ public class LobbyService {
 
 			playerService.addPlayer(lobby.getId(), sessionId);
 			messagingTemplate.convertAndSend("/queue/lobbies/join/" + sessionId, new LobbyIdResponse(lobby.getId()));
-			log.info("JOIN RESPONSE SENT OUT FOR SESSIONID {} LOBBYID {}", sessionId, lobby.getId());
 
 		}
 	}

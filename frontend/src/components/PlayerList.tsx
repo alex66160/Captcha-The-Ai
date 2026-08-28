@@ -11,8 +11,8 @@ function PlayerList() {
 
     return (
         <div>
-            {players.map((player) => (
-                <p key={player.playerName}>{player.playerName}</p>
+            {players.map((player, index) => (
+                <p key={index}>{player.playerName}</p>
             ))}
         </div>
     );

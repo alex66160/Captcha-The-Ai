@@ -25,20 +25,20 @@ function Reveal() {
 
     return votesResponse === null
         ? null
-        : votesResponse.voteTargets.map((voteTargetResponse) => (
-              <div key={voteTargetResponse.playerName}>
+        : votesResponse.voteTargets.map((voteTargetResponse, index) => (
+              <div key={index}>
                   <p>
                       voteTarget: {voteTargetResponse.playerName}{" "}
                       {voteTargetResponse.playerAvatar}{" "}
-                      {voteTargetResponse.voters.map((voterResponse) => (
-                          <div key={voterResponse.playerName}>
-                              <p>
-                                  voter: {voterResponse.playerName}{" "}
-                                  {voterResponse.playerAvatar}{" "}
-                              </p>
-                          </div>
-                      ))}
                   </p>
+                  {voteTargetResponse.voters.map((voterResponse) => (
+                      <div key={voterResponse.playerName}>
+                          <p>
+                              voter: {voterResponse.playerName}{" "}
+                              {voterResponse.playerAvatar}{" "}
+                          </p>
+                      </div>
+                  ))}
               </div>
           ));
 }

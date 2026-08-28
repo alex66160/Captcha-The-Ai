@@ -28,12 +28,14 @@ function RevealTie() {
     return tiedPlayersResponse === null ? null : (
         <div>
             <p>There is a tie between...</p>
-            {tiedPlayersResponse.tiedPlayers.map((tiedPlayerResponse) => (
-                <p>
-                    {tiedPlayerResponse.playerName}{" "}
-                    {tiedPlayerResponse.playerAvatar}
-                </p>
-            ))}
+            {tiedPlayersResponse.tiedPlayers.map(
+                (tiedPlayerResponse, index) => (
+                    <p key={index}>
+                        {tiedPlayerResponse.playerName}{" "}
+                        {tiedPlayerResponse.playerAvatar}
+                    </p>
+                ),
+            )}
         </div>
     );
 }

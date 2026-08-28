@@ -37,8 +37,8 @@ function Discuss() {
                 {questionResponse.playerAvatar} {questionResponse.playerName}{" "}
                 wrote: {questionResponse.question}
             </button>
-            {answersResponse.answers.map((answerResponse) => (
-                <button key={answerResponse.playerName}>
+            {answersResponse.answers.map((answerResponse, index) => (
+                <button key={index}>
                     {answerResponse.playerAvatar} {answerResponse.playerName}{" "}
                     wrote: {answerResponse.answer}
                 </button>

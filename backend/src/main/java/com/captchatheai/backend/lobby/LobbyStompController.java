@@ -11,7 +11,6 @@ import org.springframework.stereotype.Controller;
 import com.captchatheai.backend.player.PlayerLookup;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * The LobbyStompController class allows players to get the lobby state, join a
@@ -20,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
  * 
  * @author Alex Liu
  */
-@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class LobbyStompController {
@@ -73,7 +71,6 @@ public class LobbyStompController {
 	 */
 	@MessageMapping("/lobbies/create")
 	public void createLobby(StompHeaderAccessor accessor, @Payload CreateLobbyRequest createLobbyRequest) {
-		log.info("Create lobby was called with session id {}", accessor.getSessionId());
 		lobbyService.createLobby(accessor.getSessionId(), createLobbyRequest.password());
 	}
 

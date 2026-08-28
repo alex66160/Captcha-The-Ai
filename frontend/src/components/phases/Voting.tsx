@@ -40,22 +40,25 @@ function Voting() {
             <button
                 disabled={isSubmitted}
                 onClick={() => {
-                    publish<SubmitVoteRequest>(`app/lobbies/${lobbyId}/votes`, {
-                        voteTargetName: questionResponse.playerName,
-                    });
+                    publish<SubmitVoteRequest>(
+                        `/app/lobbies/${lobbyId}/votes`,
+                        {
+                            voteTargetName: questionResponse.playerName,
+                        },
+                    );
                     setIsSubmitted(true);
                 }}
             >
                 {questionResponse.playerAvatar} {questionResponse.playerName}{" "}
                 wrote: {questionResponse.question}
             </button>
-            {answersResponse.answers.map((answerResponse) => (
+            {answersResponse.answers.map((answerResponse, index) => (
                 <button
                     disabled={isSubmitted}
-                    key={answerResponse.playerName}
+                    key={index}
                     onClick={() => {
                         publish<SubmitVoteRequest>(
-                            `app/lobbies/${lobbyId}/votes`,
+                            `/app/lobbies/${lobbyId}/votes`,
                             {
                                 voteTargetName: answerResponse.playerName,
                             },
