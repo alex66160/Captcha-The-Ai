@@ -92,7 +92,6 @@ public class EventHandler {
 		Lobby lobby = lobbyLookup.getLobbyById(lobbyId);
 		synchronized (lobby) {
 			lobbyService.broadcastLobbyState(lobbyId);
-
 			// If the lobby is in intermission and our player count is 3, we need to
 			// transition to the starting phase.
 			if (lobby.getPhase() == LobbyPhase.INTERMISSION

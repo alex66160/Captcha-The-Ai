@@ -116,73 +116,85 @@ function Home() {
     };
 
     return (
-        <div>
+        <div className="select-none">
             {message && (
                 <div>
                     <button onClick={() => setMessage(null)}></button>
                     <p>{message}</p>
                 </div>
             )}
-            <button
-                onClick={() => {
-                    connect(joinRandomLobby);
-                }}
-            >
-                Join random lobby button
-            </button>
-            <button
-                onClick={() => {
-                    setDisplayJoinLobbyByIdForm(true);
-                    setDisplayCreateLobbyForm(false);
-                    setLobbyIdToJoin("");
-                    setLobbyPassword("");
-                }}
-            >
-                Join lobby by id button
-            </button>
-            {displayJoinLobbyByIdForm && (
-                <form
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        connect(joinLobbyById);
+            <div className="flex min-h-screen flex-col items-center justify-start">
+                <p className="text-[clamp(1rem,5vh+5vw,5rem)] text-white p-50 ">
+                    Captcha The Ai
+                </p>
+                <button
+                    className="text-xl text-white border-white border-2 p-2 m-2 w-1/3 h-1/3 max-w-60 max-h-50 min-w-10 min-h-10 rounded-lg bg-blue-500 hover:bg-blue-300 active:bg-blue-500"
+                    onClick={() => {
+                        connect(joinRandomLobby);
                     }}
                 >
-                    <button
-                        onClick={() => {
-                            setDisplayJoinLobbyByIdForm(false);
+                    Join Lobby
+                </button>
+                <button
+                    className="text-xl text-white border-white border-2 p-2 m-2 w-80 h-12 rounded-lg bg-blue-500 hover:bg-blue-300 active:bg-blue-500"
+                    onClick={() => {
+                        setDisplayJoinLobbyByIdForm(true);
+                        setDisplayCreateLobbyForm(false);
+                        setLobbyIdToJoin("");
+                        setLobbyPassword("");
+                    }}
+                >
+                    Join Lobby By ID
+                </button>
+                <button
+                    className="text-xl text-white border-white border-2 p-2 m-2 w-80 h-12 rounded-lg bg-blue-500 hover:bg-blue-300 active:bg-blue-500"
+                    onClick={() => {
+                        setDisplayCreateLobbyForm(true);
+                        setDisplayJoinLobbyByIdForm(false);
+                        setLobbyIdToJoin("");
+                        setLobbyPassword("");
+                    }}
+                >
+                    Create Lobby
+                </button>
+            </div>
+
+            {displayJoinLobbyByIdForm && (
+                <div className="fixed flex inset-0 z-50 justify-center items-center">
+                    <form
+                        className="border"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            connect(joinLobbyById);
                         }}
                     >
-                        Click to close join lobby by id form
-                    </button>
-                    <input
-                        type="text"
-                        value={lobbyIdToJoin}
-                        onChange={(event) =>
-                            setLobbyIdToJoin(event.target.value)
-                        }
-                    ></input>
+                        <button
+                            onClick={() => {
+                                setDisplayJoinLobbyByIdForm(false);
+                            }}
+                        >
+                            Click to close join lobby by id form
+                        </button>
+                        <input
+                            type="text"
+                            value={lobbyIdToJoin}
+                            onChange={(event) =>
+                                setLobbyIdToJoin(event.target.value)
+                            }
+                        ></input>
 
-                    <input
-                        type="password"
-                        value={lobbyPassword}
-                        onChange={(event) =>
-                            setLobbyPassword(event.target.value)
-                        }
-                    ></input>
-                    <button type="submit">Submit</button>
-                </form>
+                        <input
+                            type="password"
+                            value={lobbyPassword}
+                            onChange={(event) =>
+                                setLobbyPassword(event.target.value)
+                            }
+                        ></input>
+                        <button type="submit">Submit</button>
+                    </form>
+                </div>
             )}
 
-            <button
-                onClick={() => {
-                    setDisplayCreateLobbyForm(true);
-                    setDisplayJoinLobbyByIdForm(false);
-                    setLobbyIdToJoin("");
-                    setLobbyPassword("");
-                }}
-            >
-                Create lobby button
-            </button>
             {displayCreateLobbyForm && (
                 <form
                     onSubmit={(event) => {

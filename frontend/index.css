@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+
+@keyframes square-animation {
+
+ from {
+    transform: translateY(-100vh);
+ }
+
+ to {
+    transform: translateY(100vh);
+ }
+
+
+
+}
+
+.square-animation {
+    animation: square-animation linear 1 forwards;
+}
