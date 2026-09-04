@@ -116,19 +116,37 @@ function Home() {
     };
 
     return (
-        <div className="select-none">
+        <div className="select-none overflow-hidden h-screen w-screen">
             {message && (
                 <div>
                     <button onClick={() => setMessage(null)}></button>
                     <p>{message}</p>
                 </div>
             )}
-            <div className="flex min-h-screen flex-col items-center justify-start">
-                <p className="text-[clamp(1rem,5vh+5vw,5rem)] text-white p-50 ">
+            <div className="flex h-screen flex-col items-center justify-center">
+                <p className="text-[clamp(1rem,5vh+5vw,5rem)] title-animation text-white p-20 ">
                     Captcha The Ai
                 </p>
                 <button
-                    className="text-xl text-white border-white border-2 p-2 m-2 w-1/3 h-1/3 max-w-60 max-h-50 min-w-10 min-h-10 rounded-lg bg-blue-500 hover:bg-blue-300 active:bg-blue-500"
+                    className="
+                    text-xl 
+                    text-white 
+                    border-white 
+                    border-2 
+                    p-2 
+                    m-2 
+                    w-1/3 
+                    aspect-[5/1] 
+                    max-w-60 
+                    max-h-50 
+                    min-w-10 
+                    min-h-10 
+                    rounded-lg 
+                    bg-blue-500 
+                    hover:scale-[1.05] 
+                    button-animation
+                    active:bg-blue-500 
+                    transition"
                     onClick={() => {
                         connect(joinRandomLobby);
                     }}
@@ -136,7 +154,26 @@ function Home() {
                     Join Lobby
                 </button>
                 <button
-                    className="text-xl text-white border-white border-2 p-2 m-2 w-80 h-12 rounded-lg bg-blue-500 hover:bg-blue-300 active:bg-blue-500"
+                    className="
+                    text-xl 
+                    text-white 
+                    border-white 
+                    border-2 
+                    p-2 
+                    m-2 
+                    w-1/3 
+                    aspect-[5/1] 
+                    max-w-60 
+                    max-h-50 
+                    min-w-10 
+                    min-h-10 
+                    rounded-lg 
+                    bg-blue-500 
+                    hover:bg-blue-300 
+                    hover:scale-[1.05] 
+                    button-animation
+                    active:bg-blue-500 
+                    transition"
                     onClick={() => {
                         setDisplayJoinLobbyByIdForm(true);
                         setDisplayCreateLobbyForm(false);
@@ -147,7 +184,26 @@ function Home() {
                     Join Lobby By ID
                 </button>
                 <button
-                    className="text-xl text-white border-white border-2 p-2 m-2 w-80 h-12 rounded-lg bg-blue-500 hover:bg-blue-300 active:bg-blue-500"
+                    className="
+                    text-xl 
+                    text-white 
+                    border-white 
+                    border-2 
+                    p-2 
+                    m-2 
+                    w-1/3 
+                    aspect-[5/1] 
+                    max-w-60 
+                    max-h-50 
+                    min-w-10 
+                    min-h-10 
+                    rounded-lg 
+                    bg-blue-500 
+                    hover:bg-blue-300 
+                    hover:scale-[1.05] 
+                    button-animation
+                    active:bg-blue-500 
+                    transition"
                     onClick={() => {
                         setDisplayCreateLobbyForm(true);
                         setDisplayJoinLobbyByIdForm(false);
@@ -160,7 +216,7 @@ function Home() {
             </div>
 
             {displayJoinLobbyByIdForm && (
-                <div className="fixed flex inset-0 z-50 justify-center items-center">
+                <div className="fixed flex inset-0 z-50 justify-center items-center bg-white">
                     <form
                         className="border"
                         onSubmit={(event) => {

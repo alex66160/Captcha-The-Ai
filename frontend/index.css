@@ -1,20 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
 @import "tailwindcss";
 
 
 @keyframes square-animation {
 
  from {
-    transform: translateY(-100vh);
+    transform: translateY(-30vh);
  }
 
  to {
     transform: translateY(100vh);
  }
 
-
-
 }
 
 .square-animation {
-    animation: square-animation linear 1 forwards;
+    animation: square-animation linear forwards;
+}
+
+
+@keyframes title-animation {
+    0% {
+        background-position: 100%;
+        transform: scale(1.00);
+        text-shadow: 0 0 15px #60a5fa;
+    }
+
+
+    
+    50% {
+        transform: scale(1.05);
+        text-shadow: 0 0 15px #ffffff;
+    }
+    100% {
+      background-position: 300%;    
+      transform: scale(1.00);
+      text-shadow: 0 0 15px #60a5fa;
+    }
+
+   
+
+ 
+}
+
+.title-animation {
+    background: linear-gradient(
+        110deg,
+        #ffffff 0%,
+        #ffffff 10%,
+        #60a5fa 15%,
+        #ffffff 20%,
+         #ffffff 30%,
+         #60a5fa 40%,
+         #ffffff 50%,
+        #ffffff 100%
+        
+  
+    );
+  
+    background-size: 200%;
+    background-clip: text;
+    
+    
+    color: transparent;
+
+    animation: title-animation 3s ease-in-out infinite;
+}
+
+@keyframes button-animation {
+    0% {
+        background-position: 100%;
+    }
+
+    100% {
+      background-position: 300%;    
+
+    }
+}
+
+.button-animation:hover {
+     background: linear-gradient(
+        110deg,
+        transparent,
+          #60a5fa 0%,
+        #60a5fa 44%,
+        #ffffff 45%,
+        #ffffff 55%,
+        #60a5fa 56%,
+        #60a5fa 100%
+        
+  
+    );
+
+    background-size: 200%;
+    
+    
+  
+
+    animation: button-animation .5s ease forwards;
+}
+
+body {
+    font-family: "Nunito", sans-serif;
 }

@@ -11,20 +11,20 @@ function Background() {
     const [squares, setSquares] = useState<Square[]>([]);
     useEffect(() => {
         const spawnSquareInterval = setInterval(() => {
-            const size = Math.floor(Math.random() * 10) + 5;
-            const fallDuration = size;
+            const size = Math.random() * 10 + 2;
+            console.log("SIZE: " + size);
+            const fallDuration = 50 / size;
+            console.log("FALL DURATION: " + fallDuration);
             const spawnLocation = Math.random() * 100;
+            // use id so we can remove it properly and so the .map can track squares properly
             const id = crypto.randomUUID();
-            setSquares((prev) => {
-                // if (prev.length === 20) {
-                //     return [
-                //         ...prev.slice(1),
-                //         { size, fallDuration, spawnLocation, id },
-                //     ];
-                // }
-                return [...prev, { size, fallDuration, spawnLocation, id }];
-            });
-        }, 1000);
+            setSquares((prev) => [
+                ...prev,
+                { size, fallDuration, spawnLocation, id },
+            ]);
+
+            // Control how fast the squares spawn, right now it spawn a square every .5 seconds
+        }, 500);
 
         return () => {
             clearInterval(spawnSquareInterval);
@@ -44,7 +44,10 @@ function Background() {
                     }}
                     onAnimationEnd={() => {
                         setSquares((prev) =>
-                            prev.filter((s) => s.id !== square.id),
+                            prev.filter(
+                                (squareFromArray) =>
+                                    squareFromArray.id !== square.id,
+                            ),
                         );
                     }}
                 ></div>
