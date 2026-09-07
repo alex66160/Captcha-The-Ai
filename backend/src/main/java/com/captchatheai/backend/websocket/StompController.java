@@ -10,10 +10,24 @@ import lombok.RequiredArgsConstructor;
 
 @Controller
 @RequiredArgsConstructor
+/**
+ * The StompController class allows a player to get their sessionId.
+ * 
+ * @author Alex Liu
+ */
 public class StompController {
 
 	private final SimpMessagingTemplate messagingTemplate;
 
+	/**
+	 * The getSessionId method allows a player to get their sessionId. We need this
+	 * method because the sessionId is not sent back on the connect frame, so the
+	 * player must make a temporary UUID so we have a destination to send the
+	 * sessionId back when they call this endpoint.
+	 * 
+	 * @param accessor             the accessor for the player's sessionId
+	 * @param throwawayUUIDRequest the temporary UUID for the player
+	 */
 	@MessageMapping("/session-id")
 	public void getSessionId(StompHeaderAccessor accessor, @Payload ThrowawayUUIDRequest throwawayUUIDRequest) {
 
