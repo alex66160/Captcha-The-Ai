@@ -103,3 +103,20 @@
 body {
     font-family: "Nunito", sans-serif;
 }
+
+@keyframes popup-animation {
+
+    from {transform: translateY(-100vh);
+    }
+
+    to {transform: translateY(0vh)};
+
+
+}
+
+.popup-animation {
+
+    animation: popup-animation .75s ease forwards;
+
+
+}
