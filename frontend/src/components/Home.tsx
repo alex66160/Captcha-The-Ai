@@ -230,14 +230,31 @@ function Home() {
             {displayJoinLobbyByIdForm && (
                 <div className="fixed flex inset-0 z-50 justify-center items-center bg-black/50">
                     <form
-                        className="popup-animation flex flex-col justify-center items-center text-white text-xl border-white border-2 rounded-lg bg-blue-500 w-1/4 aspect-[2/1] relative"
+                        className="
+                        popup-animation
+                        flex 
+                        flex-col 
+                        justify-center 
+                        items-center 
+                        text-white 
+                        border-white 
+                        border-2 
+                        rounded-sm
+                        md:rounded-md 
+                        bg-blue-500
+                     
+                        w-[clamp(250px,35vw,800px)]
+                        aspect-[1.75/1] 
+                        relative"
                         onSubmit={(event) => {
                             event.preventDefault();
                             connect(joinLobbyById);
                             setDisplayJoinLobbyByIdForm(false);
                         }}
                     >
-                        <p className="text-2xl">Join Lobby By ID</p>
+                        <p className="text-[clamp(1rem,2.5vw,100rem)] m-4">
+                            Join Lobby By ID
+                        </p>
                         <button
                             className="absolute top-2 right-4"
                             onClick={() => {
@@ -247,7 +264,15 @@ function Home() {
                             x
                         </button>
                         <input
-                            className="border-2 rounded-md p-1 m-1 outline-none"
+                            className="
+                            text-[clamp(.75rem,2vw,1.25rem)] 
+                            border-2 
+                            rounded-sm 
+                            md:rounded-md 
+                            p-1 
+                            m-1 
+                            focus:outline-none 
+                            focus:border-blue-200"
                             type="text"
                             value={lobbyIdToJoin}
                             placeholder="Enter Lobby ID"
@@ -256,7 +281,15 @@ function Home() {
                             }
                         ></input>
                         <input
-                            className="border-2 rounded-md p-1 m-1 focus:outline-none focus:border-blue-200"
+                            className="
+                            text-[clamp(.75rem,2vw,1.25rem)] 
+                            border-2 
+                            rounded-sm 
+                            md:rounded-md 
+                            p-1 
+                            m-1 
+                            focus:outline-none 
+                            focus:border-blue-200"
                             type="text"
                             value={lobbyPassword}
                             placeholder="Enter Lobby Password"
@@ -266,18 +299,18 @@ function Home() {
                         ></input>
                         <button
                             className="
-                    text-xl 
+                    text-[clamp(.75rem,2vw,1.25rem)]
                     text-white 
                     border-white 
                     border-2 
-                    p-2
-                    m-2
-                    w-1/3 
-                    aspect-[5/1] 
-               
-                    rounded-lg 
+                    p-2 
+                    m-4 
+                    w-[clamp(100px,10vw,200px)]
+                    aspect-[5/1]
+                    rounded-sm
+                    md:rounded-md 
+                    
                     bg-blue-500 
-                    hover:bg-blue-300 
                     hover:scale-[1.05] 
                     button-animation
                     active:scale-[.95]
@@ -291,29 +324,82 @@ function Home() {
             )}
 
             {displayCreateLobbyForm && (
-                <form
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        connect(createLobby);
-                        setDisplayCreateLobbyForm(false);
-                    }}
-                >
-                    <button
-                        onClick={() => {
+                <div className="fixed flex inset-0 z-50 justify-center items-center bg-black/50">
+                    <form
+                        className="
+                        popup-animation
+                        flex 
+                        flex-col 
+                        justify-center 
+                        items-center 
+                        text-white 
+                        border-white 
+                        border-2 
+                        rounded-sm
+                        md:rounded-md 
+                        bg-blue-500
+                     
+                        w-[clamp(250px,35vw,800px)]
+                        aspect-[1.75/1] 
+                        relative"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            connect(createLobby);
                             setDisplayCreateLobbyForm(false);
                         }}
                     >
-                        Click to close create lobby form
-                    </button>
-                    <input
-                        type="password"
-                        value={lobbyPassword}
-                        onChange={(event) =>
-                            setLobbyPassword(event.target.value)
-                        }
-                    ></input>
-                    <button type="submit">Submit</button>
-                </form>
+                        <p className="text-[clamp(1rem,2.5vw,100rem)] m-4">
+                            Create Lobby
+                        </p>
+                        <button
+                            className="absolute top-2 right-4"
+                            onClick={() => {
+                                setDisplayCreateLobbyForm(false);
+                            }}
+                        >
+                            x
+                        </button>
+                        <input
+                            className="
+                            text-[clamp(.75rem,2vw,1.25rem)] 
+                            border-2 
+                            rounded-sm 
+                            md:rounded-md 
+                            p-1 
+                            m-1 
+                            focus:outline-none 
+                            focus:border-blue-200"
+                            type="text"
+                            value={lobbyPassword}
+                            placeholder="Set Lobby Password"
+                            onChange={(event) =>
+                                setLobbyPassword(event.target.value)
+                            }
+                        ></input>
+                        <button
+                            className="
+                        text-[clamp(.75rem,2vw,1.25rem)]
+                        text-white 
+                        border-white 
+                        border-2 
+                        p-2 
+                        m-4 
+                        w-[clamp(100px,10vw,200px)]
+                        aspect-[5/1]
+                        rounded-sm
+                        md:rounded-md 
+                        
+                        bg-blue-500 
+                        hover:scale-[1.05] 
+                        button-animation
+                        active:scale-[.95]
+                        transition"
+                            type="submit"
+                        >
+                            Submit
+                        </button>
+                    </form>
+                </div>
             )}
         </div>
     );
